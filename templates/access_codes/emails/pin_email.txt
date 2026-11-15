@@ -1,0 +1,14 @@
+Hello {{ user.first_name }},
+
+Your personal PIN for the shared laundry lockbox is:
+
+    {{ pin }}
+
+Use it on the lockbox keypad to collect the laundry room key during your
+reserved slot.
+
+This PIN is personal: do not share it with anyone or write it somewhere
+public. You can also view it at any time on your account page after
+logging in.
+
+— Dorm Laundry

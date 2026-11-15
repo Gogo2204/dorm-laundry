@@ -13,6 +13,7 @@ urlpatterns = [
     path("register/pending/", views.RegistrationPendingView.as_view(), name="registration_pending"),
     path("verify/<str:token>/", views.VerifyEmailView.as_view(), name="verify_email"),
     path("account/", views.AccountView.as_view(), name="account"),
+    path("account/pin/reveal/", views.RevealPINView.as_view(), name="reveal_pin"),
     path(
         "login/",
         auth_views.LoginView.as_view(

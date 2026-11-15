@@ -11,6 +11,9 @@
                     {% if success %}Email confirmed{% else %}Verification failed{% endif %}
                 </h1>
                 <p class="text-muted">{{ message }}</p>
+                {% if pin_note %}
+                    <p class="text-muted small">{{ pin_note }}</p>
+                {% endif %}
                 {% if success %}
                     <a class="btn btn-primary" href="{% url 'login' %}">Log in</a>
                 {% else %}
