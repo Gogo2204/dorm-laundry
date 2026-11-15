@@ -1,0 +1,171 @@
+"""Booking business rules (BR-01..BR-10) and slot/week calculations.
+
+All datetime math is timezone-aware in the configured local timezone, so
+daylight-saving transitions and the midnight-crossing slot 5 behave correctly.
+"""
+
+import datetime as dt
+
+from django.db import IntegrityError, transaction
+from django.utils import timezone
+
+from accounts.models import User
+
+from .models import MachineSet, Reservation
+
+# Slot number -> (start hour, end hour, end day offset). Slot 5 ends next day.
+SLOT_TIMES: dict[int, tuple[int, int, int]] = {
+    1: (6, 10, 0),
+    2: (10, 14, 0),
+    3: (14, 18, 0),
+    4: (18, 22, 0),
+    5: (22, 2, 1),
+}
+
+WEEKLY_QUOTA = 2
+
+
+class BookingError(Exception):
+    """A booking rule was violated; the message is safe to show the user."""
+
+
+def slot_start(booking_date: dt.date, slot_number: int) -> dt.datetime:
+    """Timezone-aware local start of a slot on its booking date."""
+    hour = SLOT_TIMES[slot_number][0]
+    naive = dt.datetime.combine(booking_date, dt.time(hour=hour))
+    return timezone.make_aware(naive, timezone.get_current_timezone())
+
+
+def slot_end(booking_date: dt.date, slot_number: int) -> dt.datetime:
+    """Timezone-aware local end of a slot; slot 5 ends 02:00 the next day."""
+    _, end_hour, day_offset = SLOT_TIMES[slot_number]
+    end_date = booking_date + dt.timedelta(days=day_offset)
+    naive = dt.datetime.combine(end_date, dt.time(hour=end_hour))
+    return timezone.make_aware(naive, timezone.get_current_timezone())
+
+
+def slot_label(slot_number: int) -> str:
+    start_hour, end_hour, day_offset = SLOT_TIMES[slot_number]
+    suffix = " (+1 day)" if day_offset else ""
+    return f"{start_hour:02d}:00–{end_hour:02d}:00{suffix}"
+
+
+def week_bounds(day: dt.date) -> tuple[dt.date, dt.date]:
+    """Monday..Sunday of the week containing `day`."""
+    monday = day - dt.timedelta(days=day.weekday())
+    return monday, monday + dt.timedelta(days=6)
+
+
+def booking_horizon(today: dt.date) -> tuple[dt.date, dt.date]:
+    """First and last bookable date: current week Monday to next week Sunday."""
+    monday, _ = week_bounds(today)
+    return monday, monday + dt.timedelta(days=13)
+
+
+def quota_used(user: User, booking_date: dt.date) -> int:
+    """Counted reservations in the Monday-Sunday week of `booking_date` (BR-01, BR-07)."""
+    monday, sunday = week_bounds(booking_date)
+    return Reservation.objects.filter(
+        user=user,
+        booking_date__range=(monday, sunday),
+        counts_toward_quota=True,
+    ).count()
+
+
+def book_slot(
+    *, user: User, machine_set: MachineSet, booking_date: dt.date, slot_number: int
+) -> Reservation:
+    """Create a reservation, enforcing every booking rule.
+
+    Concurrency (BR-10): the user's row is locked for the duration of the
+    transaction (PostgreSQL), serialising same-user bookings so the weekly
+    quota and adjacency checks cannot be raced. Cross-user conflicts on the
+    same machine slot are prevented by the conditional unique constraints,
+    whose violation is translated into a friendly error.
+    """
+    if slot_number not in SLOT_TIMES:
+        raise BookingError("Choose a valid time slot.")
+    if not machine_set.is_active:
+        raise BookingError("This machine set is currently not available for booking.")
+
+    now = timezone.now()
+    today = timezone.localdate(now)
+    first_day, last_day = booking_horizon(today)
+    if not (first_day <= booking_date <= last_day):
+        raise BookingError("You can only book slots in the current or next week.")
+    if slot_start(booking_date, slot_number) <= now:
+        raise BookingError("This slot has already started and can no longer be booked.")
+
+    try:
+        with transaction.atomic():
+            # Serialise bookings per user (no-op on SQLite, row lock on PostgreSQL).
+            locked_user = User.objects.select_for_update().get(pk=user.pk)
+            if not locked_user.is_active or locked_user.deactivated_at is not None:
+                raise BookingError("Your account is not allowed to make reservations.")
+
+            active_same_day = Reservation.objects.filter(
+                user=user,
+                booking_date=booking_date,
+                status=Reservation.Status.ACTIVE,
+            ).values_list("slot_number", flat=True)
+            if slot_number in active_same_day:
+                raise BookingError(
+                    "You already have a reservation for this slot on another machine set."
+                )
+            if {slot_number - 1, slot_number + 1} & set(active_same_day):
+                raise BookingError(
+                    "You cannot book two consecutive slots on the same day. "
+                    "Leave at least one slot between your reservations."
+                )
+            if quota_used(user, booking_date) >= WEEKLY_QUOTA:
+                raise BookingError(
+                    f"You have reached the limit of {WEEKLY_QUOTA} reservations for that week."
+                )
+            if Reservation.objects.filter(
+                machine_set=machine_set,
+                booking_date=booking_date,
+                slot_number=slot_number,
+                status=Reservation.Status.ACTIVE,
+            ).exists():
+                raise BookingError("This machine set is already booked for that slot.")
+
+            return Reservation.objects.create(
+                user=user,
+                machine_set=machine_set,
+                booking_date=booking_date,
+                slot_number=slot_number,
+            )
+    except IntegrityError:
+        # A concurrent request won the race; the unique constraint held.
+        raise BookingError("That slot was just taken. Please pick another one.")
+
+
+def cancel_reservation(*, reservation: Reservation, cancelled_by: User) -> Reservation:
+    """Cancel a reservation (BR-07/BR-08).
+
+    Residents may cancel their own reservations at any time; administrators
+    may cancel any reservation. Cancelling before the slot starts releases
+    the weekly quota; cancelling after it started keeps it counted. The row
+    is kept for history.
+    """
+    if reservation.user_id != cancelled_by.pk and not cancelled_by.is_admin:
+        raise BookingError("You can only cancel your own reservations.")
+
+    with transaction.atomic():
+        locked = (
+            Reservation.objects.select_for_update()
+            .select_related("machine_set")
+            .get(pk=reservation.pk)
+        )
+        if locked.status != Reservation.Status.ACTIVE:
+            raise BookingError("This reservation is already cancelled.")
+
+        now = timezone.now()
+        locked.status = Reservation.Status.CANCELLED
+        locked.cancelled_at = now
+        locked.cancelled_by = cancelled_by
+        locked.counts_toward_quota = slot_start(locked.booking_date, locked.slot_number) <= now
+        locked.save(
+            update_fields=["status", "cancelled_at", "cancelled_by", "counts_toward_quota"]
+        )
+        return locked

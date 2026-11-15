@@ -19,12 +19,12 @@ def make_active_user(email="ana@example.com"):
 class LoginTests(TestCase):
     url = reverse("login")
 
-    def test_valid_login_redirects_home(self):
+    def test_valid_login_redirects_to_schedule(self):
         make_active_user()
         response = self.client.post(
             self.url, {"username": "ana@example.com", "password": PASSWORD}
         )
-        self.assertRedirects(response, reverse("home"))
+        self.assertRedirects(response, reverse("schedule"))
 
     def test_invalid_password_shows_generic_error(self):
         make_active_user()
@@ -67,12 +67,12 @@ class LoginTests(TestCase):
 
 
 class LogoutTests(TestCase):
-    def test_logout_via_post(self):
+    def test_logout_via_post_redirects_to_login(self):
         user = make_active_user()
         self.client.force_login(user)
         response = self.client.post(reverse("logout"))
-        self.assertRedirects(response, reverse("home"))
-        self.assertFalse(self.client.get(reverse("home")).context["user"].is_authenticated)
+        self.assertRedirects(response, reverse("login"))
+        self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_logout_rejects_get(self):
         self.client.force_login(make_active_user())
