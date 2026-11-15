@@ -12,6 +12,9 @@ jobs:
       DJANGO_SECRET_KEY: ci-only-secret-key-not-used-anywhere-else
       DJANGO_DEBUG: "false"
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      # The test client speaks plain HTTP; keep the rest of the production
+      # settings path active but skip the HTTPS redirect.
+      DJANGO_SECURE_SSL_REDIRECT: "false"
       DB_ENGINE: sqlite
     steps:
       - uses: actions/checkout@v4
