@@ -62,6 +62,78 @@ idempotent: re-running it skips administrators that already exist.
    password. Password reset works the same way — the email appears in the
    console.
 
+## Lockbox PINs
+
+### Encryption key
+
+PINs are stored encrypted (Fernet authenticated encryption) and deduplicated
+via keyed HMAC fingerprints. Both require `PIN_ENCRYPTION_KEY` in the
+environment:
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Put the output in `.env` (or the production environment). The key is
+independent of `DJANGO_SECRET_KEY`, must never be committed, and must be
+backed up securely — **losing it makes every stored PIN unreadable**.
+Rotating it requires re-importing the PIN inventory. PIN features fail with a
+clear error if the key is missing or wrong; nothing is ever stored in
+plaintext. The accepted PIN format defaults to 4–8 digits
+(`PIN_FORMAT_REGEX`); adjust it to match the lockbox hardware.
+
+### Inventory setup and physical programming
+
+1. In Django Admin → *Lockbox PINs*, add PINs individually (the input is not
+   echoed back) or use *Import from CSV* — a UTF-8 file with **one PIN per
+   line**, optional `pin` header row. Duplicates are skipped; invalid rows
+   are reported by line number only.
+2. New PINs start as **UNPROGRAMMED**. Program each code into the physical
+   lockbox and test it on the keypad.
+3. Select the programmed PINs and run **"Confirm programmed into lockbox"**.
+   After an explicit confirmation page they become **AVAILABLE** — only then
+   can they be assigned to residents.
+
+### Assignment and email delivery
+
+When a resident verifies their email, one AVAILABLE PIN is assigned
+atomically (exactly one PIN per resident, one resident per PIN) and emailed
+to them via a persistent delivery record. If the inventory is empty,
+verification still succeeds and the resident sees a waiting message; the
+Users list in Admin shows an **"Awaiting PIN"** filter and an **"Allocate
+lockbox PINs"** action for assigning codes later (also used after
+reactivation). Failed emails are kept as FAILED delivery records — retry via
+the **"Retry failed/pending deliveries"** action on *PIN deliveries*.
+Residents can also reveal their own PIN on *My Account* (masked by default).
+
+### Deactivation and manual revocation (IMPORTANT)
+
+The lockbox is **offline**: this application can never disable a code on the
+device. Deactivating a resident only marks their PIN **REVOKE_PENDING**.
+The mandatory manual procedure is:
+
+1. Deactivate the resident (Users → "Deactivate selected users").
+2. Open *Lockbox PINs*, filter by status REVOKE_PENDING.
+3. Physically delete each listed code from the lockbox keypad and verify it
+   no longer opens the box.
+4. Select the PINs and run **"Confirm physical removal"** — they become
+   REVOKED (terminal; revoked PINs are never reused automatically).
+
+Until step 3 is done, **the code still opens the lockbox**, whatever the
+application says. A reactivated resident never gets their old PIN back; use
+"Allocate lockbox PINs" to give them a fresh one.
+
+All sensitive PIN operations (import, programming, assignment, delivery
+attempts, retries, revocation) are recorded in the *PIN audit entries* log,
+which never contains PIN values.
+
+### Known hardware limitations
+
+Before launch, confirm the chosen lockbox supports at least 80
+simultaneously active distinct PINs, individual code deletion, and has
+acceptable battery/emergency behaviour (REQUIREMENTS §16.3). The 4–8 digit
+format default is an assumption to verify against the actual device.
+
 ## Checks and tests
 
 ```bash

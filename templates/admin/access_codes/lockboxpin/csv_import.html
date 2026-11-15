@@ -1,0 +1,18 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<p>
+    Upload a UTF-8 file with one PIN per line (an optional <code>pin</code>
+    header row is allowed). PINs are validated, checked for duplicates via
+    keyed fingerprints, stored encrypted, and created as
+    <strong>UNPROGRAMMED</strong> — they must be programmed into the physical
+    lockbox and confirmed before they can be assigned.
+</p>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" class="default" value="Import">
+    <a class="button" href="{{ back_url }}">Cancel</a>
+</form>
+{% endblock %}

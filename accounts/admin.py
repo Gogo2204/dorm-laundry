@@ -15,6 +15,28 @@ from .forms import ApprovedResidentCSVForm
 from .models import ApprovedResident, User
 
 
+class AwaitingPINFilter(admin.SimpleListFilter):
+    """Surfaces verified residents who still need a lockbox PIN (UC-02 step 6)."""
+
+    title = "lockbox PIN"
+    parameter_name = "pin"
+
+    def lookups(self, request, model_admin):
+        return [("awaiting", "Awaiting PIN"), ("assigned", "PIN assigned")]
+
+    def queryset(self, request, queryset):
+        from access_codes.models import LockboxPIN
+
+        assigned = queryset.filter(lockbox_pins__status=LockboxPIN.Status.ASSIGNED)
+        if self.value() == "assigned":
+            return assigned
+        if self.value() == "awaiting":
+            return queryset.filter(
+                is_active=True, email_verified=True, deactivated_at__isnull=True
+            ).exclude(pk__in=assigned.values("pk"))
+        return queryset
+
+
 class SafeguardedUserChangeForm(UserChangeForm):
     """Blocks edits that would deactivate or demote the last active admin."""
 
@@ -44,10 +66,11 @@ class UserAdmin(DjangoUserAdmin):
         "email_verified",
         "deactivated_at",
         "is_staff",
+        "pin_status",
     ]
-    list_filter = ["is_active", "email_verified", "is_staff", "is_superuser"]
+    list_filter = ["is_active", "email_verified", "is_staff", "is_superuser", AwaitingPINFilter]
     search_fields = ["email", "first_name", "last_name"]
-    actions = ["deactivate_users"]
+    actions = ["deactivate_users", "allocate_pins"]
 
     fieldsets = (
         (None, {"fields": ("email", "password")}),
@@ -79,13 +102,21 @@ class UserAdmin(DjangoUserAdmin):
     )
 
     def save_model(self, request, obj, form, change):
+        deactivating = False
         if change:
             previous = User.objects.get(pk=obj.pk)
-            if previous.is_active and not obj.is_active and obj.deactivated_at is None:
+            deactivating = previous.is_active and not obj.is_active
+            if deactivating and obj.deactivated_at is None:
                 obj.deactivated_at = timezone.now()
             elif obj.is_active:
                 obj.deactivated_at = None
         super().save_model(request, obj, form, change)
+        if deactivating:
+            # Keep the change-form path consistent with services.deactivate_user:
+            # a deactivated resident's PIN must be flagged for physical removal.
+            from access_codes.services import mark_revoke_pending_for_user
+
+            mark_revoke_pending_for_user(obj, actor=request.user)
 
     def has_delete_permission(self, request, obj=None):
         allowed = super().has_delete_permission(request, obj)
@@ -96,12 +127,59 @@ class UserAdmin(DjangoUserAdmin):
                 return False
         return allowed
 
+    @admin.display(description="Lockbox PIN")
+    def pin_status(self, obj: User) -> str:
+        from access_codes.services import user_assigned_pin
+
+        if user_assigned_pin(obj) is not None:
+            return "Assigned"
+        if obj.is_active and obj.email_verified and obj.deactivated_at is None:
+            return "Awaiting"
+        return "—"
+
+    @admin.action(description="Allocate lockbox PINs to selected users")
+    def allocate_pins(self, request, queryset):
+        from access_codes.services import allocate_pin_for_user, user_assigned_pin
+
+        allocated = skipped = no_inventory = 0
+        for user in queryset:
+            if user_assigned_pin(user) is not None:
+                skipped += 1
+                continue
+            pin = allocate_pin_for_user(user, actor=request.user)
+            if pin is None:
+                if user.is_active and user.email_verified and user.deactivated_at is None:
+                    no_inventory += 1
+                else:
+                    skipped += 1
+            else:
+                allocated += 1
+        if allocated:
+            self.message_user(
+                request,
+                f"Allocated {allocated} PIN(s); delivery emails are being sent.",
+                messages.SUCCESS,
+            )
+        if no_inventory:
+            self.message_user(
+                request,
+                f"{no_inventory} eligible user(s) could not get a PIN: no AVAILABLE "
+                "PINs in the inventory.",
+                messages.ERROR,
+            )
+        if skipped:
+            self.message_user(
+                request,
+                f"{skipped} user(s) skipped (already assigned or not eligible).",
+                messages.WARNING,
+            )
+
     @admin.action(description="Deactivate selected users")
     def deactivate_users(self, request, queryset):
         deactivated = 0
         for user in queryset:
             try:
-                services.deactivate_user(user)
+                services.deactivate_user(user, actor=request.user)
                 deactivated += 1
             except ValidationError as exc:
                 self.message_user(request, f"{user.email}: {exc.messages[0]}", messages.ERROR)

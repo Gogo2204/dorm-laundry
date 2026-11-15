@@ -129,6 +129,14 @@ LOGOUT_REDIRECT_URL = "login"
 EMAIL_VERIFICATION_TIMEOUT = int(os.environ.get("EMAIL_VERIFICATION_TIMEOUT", str(60 * 60 * 72)))
 
 
+# Lockbox PIN handling. The Fernet key encrypts PINs at rest and keys the
+# duplicate-detection fingerprints; it is independent of DJANGO_SECRET_KEY and
+# must never be committed. PIN format defaults to 4-8 digits (conservative
+# assumption; adjust to the lockbox hardware's documented requirements).
+PIN_ENCRYPTION_KEY = os.environ.get("PIN_ENCRYPTION_KEY", "")
+PIN_FORMAT_REGEX = os.environ.get("PIN_FORMAT_REGEX", r"^\d{4,8}$")
+
+
 # Internationalization
 
 LANGUAGE_CODE = "en-us"

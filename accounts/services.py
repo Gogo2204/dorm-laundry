@@ -114,17 +114,29 @@ def verify_email_token(token: str) -> tuple[VerificationResult, User | None]:
     except signing.BadSignature:
         return VerificationResult.INVALID, None
 
-    user = User.objects.filter(pk=data.get("uid"), email=data.get("email")).first()
-    if user is None:
-        return VerificationResult.INVALID, None
-    if user.deactivated_at is not None:
-        return VerificationResult.DEACTIVATED, None
-    if user.email_verified:
-        return VerificationResult.ALREADY_VERIFIED, user
+    with transaction.atomic():
+        user = (
+            User.objects.select_for_update()
+            .filter(pk=data.get("uid"), email=data.get("email"))
+            .first()
+        )
+        if user is None:
+            return VerificationResult.INVALID, None
+        if user.deactivated_at is not None:
+            return VerificationResult.DEACTIVATED, None
+        if user.email_verified:
+            return VerificationResult.ALREADY_VERIFIED, user
 
-    user.email_verified = True
-    user.is_active = True
-    user.save(update_fields=["email_verified", "is_active"])
+        user.email_verified = True
+        user.is_active = True
+        user.save(update_fields=["email_verified", "is_active"])
+
+        # Allocate a lockbox PIN atomically with activation (UC-06). Returns
+        # None when the inventory is empty; the user is told their PIN is
+        # awaiting an administrator. Imported here to avoid an app cycle.
+        from access_codes.services import allocate_pin_for_user
+
+        allocate_pin_for_user(user)
     return VerificationResult.VERIFIED, user
 
 
@@ -163,21 +175,32 @@ def check_admin_delete(user: User) -> None:
     check_admin_change(user, is_active=False, is_staff=False, is_superuser=False)
 
 
-def deactivate_user(user: User) -> None:
+def deactivate_user(user: User, *, actor: User | None = None) -> None:
     """Administratively deactivate an account (login is blocked immediately).
 
     Marks `deactivated_at` so email verification and password reset can never
-    reactivate the account. PIN revocation marking and reservation cancellation
-    are added in later phases.
+    reactivate the account, and flags the resident's assigned lockbox PIN as
+    REVOKE_PENDING. The physical PIN keeps working until an administrator
+    removes it from the offline lockbox and confirms removal in Django Admin.
     """
     check_admin_change(user, is_active=False, is_staff=user.is_staff, is_superuser=user.is_superuser)
-    user.is_active = False
-    user.deactivated_at = timezone.now()
-    user.save(update_fields=["is_active", "deactivated_at"])
+    from access_codes.services import mark_revoke_pending_for_user
+
+    with transaction.atomic():
+        user.is_active = False
+        user.deactivated_at = timezone.now()
+        user.save(update_fields=["is_active", "deactivated_at"])
+        mark_revoke_pending_for_user(user, actor=actor)
 
 
 def reactivate_user(user: User) -> None:
-    """Clear an administrative deactivation; verification state is unchanged."""
+    """Clear an administrative deactivation; verification state is unchanged.
+
+    Deliberately does NOT restore the user's previous lockbox PIN: once a PIN
+    enters the revocation process it stays there. To give a reactivated
+    resident lockbox access again, an administrator assigns a fresh PIN via
+    the "Allocate PINs" action in Django Admin (audited).
+    """
     user.is_active = user.email_verified
     user.deactivated_at = None
     user.save(update_fields=["is_active", "deactivated_at"])
