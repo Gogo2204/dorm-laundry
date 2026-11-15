@@ -116,10 +116,18 @@ def allocate_pin_for_user(user: User, *, actor: User | None = None) -> LockboxPI
     final backstop. Returns None when no PIN is available or the user is not
     eligible; callers surface the "awaiting administrator" message.
     """
-    if not user.is_active or user.deactivated_at is not None or not user.email_verified:
-        return None
-
     with transaction.atomic():
+        # Lock the user row and re-check eligibility inside the transaction so
+        # allocation cannot race with a concurrent deactivation: whichever
+        # commits first, the loser sees the other's state (PostgreSQL).
+        locked_user = User.objects.select_for_update().get(pk=user.pk)
+        if (
+            not locked_user.is_active
+            or locked_user.deactivated_at is not None
+            or not locked_user.email_verified
+        ):
+            return None
+
         existing = user_assigned_pin(user)
         if existing is not None:
             return existing

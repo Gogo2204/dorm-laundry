@@ -4,7 +4,7 @@ from django.urls import reverse
 from laundry import services
 from laundry.models import MachineSet, Reservation
 
-from .utils import FRI, freeze_now, make_admin, make_resident
+from .utils import FRI, MON, freeze_now, make_admin, make_resident
 
 
 class ReservationAdminTests(TestCase):
@@ -85,6 +85,19 @@ class ReservationAdminTests(TestCase):
                 follow=True,
             )
         self.assertContains(response, "already cancelled")
+
+    def test_timing_filter_separates_upcoming_from_past(self):
+        past = Reservation.objects.create(
+            user=self.ana, machine_set=self.set1, booking_date=MON, slot_number=2
+        )
+        url = reverse("admin:laundry_reservation_changelist")
+        with freeze_now():
+            upcoming = self.client.get(url, {"timing": "upcoming"})
+            past_view = self.client.get(url, {"timing": "past"})
+        self.assertContains(upcoming, f"/laundry/reservation/{self.reservation.pk}/")
+        self.assertNotContains(upcoming, f"/laundry/reservation/{past.pk}/")
+        self.assertContains(past_view, f"/laundry/reservation/{past.pk}/")
+        self.assertNotContains(past_view, f"/laundry/reservation/{self.reservation.pk}/")
 
     def test_ordinary_user_denied(self):
         self.client.logout()

@@ -169,3 +169,40 @@ def cancel_reservation(*, reservation: Reservation, cancelled_by: User) -> Reser
             update_fields=["status", "cancelled_at", "cancelled_by", "counts_toward_quota"]
         )
         return locked
+
+
+def cancel_future_reservations_for_user(user: User, *, cancelled_by: User | None = None) -> int:
+    """Cancel every ACTIVE reservation of `user` that has not started yet.
+
+    Used by the account-deactivation workflow (UC-08): future reservations are
+    cancelled and release their weekly quota (`counts_toward_quota=False`);
+    reservations that have already started are left untouched and keep their
+    existing quota behaviour. Rows are never deleted. Returns the number of
+    reservations cancelled; calling it again is a no-op.
+    """
+    now = timezone.now()
+    today = timezone.localdate(now)
+    cancelled = 0
+    with transaction.atomic():
+        candidates = Reservation.objects.select_for_update().filter(
+            user=user,
+            status=Reservation.Status.ACTIVE,
+            booking_date__gte=today,
+        )
+        for reservation in candidates:
+            if slot_start(reservation.booking_date, reservation.slot_number) <= now:
+                continue  # already started; keep it
+            reservation.status = Reservation.Status.CANCELLED
+            reservation.cancelled_at = now
+            reservation.cancelled_by = cancelled_by
+            reservation.counts_toward_quota = False
+            reservation.save(
+                update_fields=[
+                    "status",
+                    "cancelled_at",
+                    "cancelled_by",
+                    "counts_toward_quota",
+                ]
+            )
+            cancelled += 1
+    return cancelled

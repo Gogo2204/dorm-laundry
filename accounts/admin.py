@@ -1,6 +1,7 @@
 import csv
 import io
 
+from django import forms
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.forms import UserChangeForm
@@ -49,6 +50,10 @@ class SafeguardedUserChangeForm(UserChangeForm):
                 is_staff=cleaned.get("is_staff", self.instance.is_staff),
                 is_superuser=cleaned.get("is_superuser", self.instance.is_superuser),
             )
+            if cleaned.get("is_active") and self.instance.deactivated_at is not None:
+                # Reactivation via the change form must not bypass the
+                # approved-resident eligibility rules.
+                services.check_can_reactivate(self.instance)
         return cleaned
 
 
@@ -70,7 +75,8 @@ class UserAdmin(DjangoUserAdmin):
     ]
     list_filter = ["is_active", "email_verified", "is_staff", "is_superuser", AwaitingPINFilter]
     search_fields = ["email", "first_name", "last_name"]
-    actions = ["deactivate_users", "allocate_pins"]
+    actions = ["deactivate_users", "reactivate_users", "allocate_pins"]
+    readonly_fields = ["deactivated_by", "last_login", "date_joined"]
 
     fieldsets = (
         (None, {"fields": ("email", "password")}),
@@ -82,6 +88,7 @@ class UserAdmin(DjangoUserAdmin):
                     "is_active",
                     "email_verified",
                     "deactivated_at",
+                    "deactivated_by",
                     "is_staff",
                     "is_superuser",
                     "groups",
@@ -108,15 +115,16 @@ class UserAdmin(DjangoUserAdmin):
             deactivating = previous.is_active and not obj.is_active
             if deactivating and obj.deactivated_at is None:
                 obj.deactivated_at = timezone.now()
+                obj.deactivated_by = request.user
             elif obj.is_active:
                 obj.deactivated_at = None
+                obj.deactivated_by = None
         super().save_model(request, obj, form, change)
         if deactivating:
             # Keep the change-form path consistent with services.deactivate_user:
-            # a deactivated resident's PIN must be flagged for physical removal.
-            from access_codes.services import mark_revoke_pending_for_user
-
-            mark_revoke_pending_for_user(obj, actor=request.user)
+            # flag the PIN for physical removal, cancel pending deliveries, and
+            # cancel future reservations.
+            services.finalize_deactivation(obj, actor=request.user)
 
     def has_delete_permission(self, request, obj=None):
         allowed = super().has_delete_permission(request, obj)
@@ -174,6 +182,24 @@ class UserAdmin(DjangoUserAdmin):
                 messages.WARNING,
             )
 
+    @admin.action(description="Reactivate selected users")
+    def reactivate_users(self, request, queryset):
+        reactivated = 0
+        for user in queryset.filter(deactivated_at__isnull=False):
+            try:
+                services.reactivate_user(user)
+                reactivated += 1
+            except ValidationError as exc:
+                self.message_user(request, f"{user.email}: {exc.messages[0]}", messages.ERROR)
+        if reactivated:
+            self.message_user(
+                request,
+                f"Reactivated {reactivated} user(s). Cancelled reservations stay "
+                "cancelled and old PINs are not restored — use 'Allocate lockbox "
+                "PINs' to assign a fresh PIN.",
+                messages.SUCCESS,
+            )
+
     @admin.action(description="Deactivate selected users")
     def deactivate_users(self, request, queryset):
         deactivated = 0
@@ -187,10 +213,49 @@ class UserAdmin(DjangoUserAdmin):
             self.message_user(request, f"Deactivated {deactivated} user(s).", messages.SUCCESS)
 
 
+class ClaimedFilter(admin.SimpleListFilter):
+    title = "registration"
+    parameter_name = "claimed"
+
+    def lookups(self, request, model_admin):
+        return [("yes", "Registered"), ("no", "Not registered")]
+
+    def queryset(self, request, queryset):
+        if self.value() == "yes":
+            return queryset.filter(registered_user__isnull=False)
+        if self.value() == "no":
+            return queryset.filter(registered_user__isnull=True)
+        return queryset
+
+
+class ApprovedResidentForm(forms.ModelForm):
+    class Meta:
+        model = ApprovedResident
+        fields = ["first_name", "last_name", "registered_user", "is_eligible"]
+
+    def clean(self):
+        cleaned = super().clean()
+        entry = self.instance
+        if (
+            entry.pk
+            and not cleaned.get("is_eligible", True)
+            and entry.registered_user is not None
+        ):
+            # Revoking eligibility deactivates the linked account; that must
+            # not be a way around the last-active-administrator safeguard.
+            user = entry.registered_user
+            services.check_admin_change(
+                user, is_active=False, is_staff=user.is_staff, is_superuser=user.is_superuser
+            )
+        return cleaned
+
+
 @admin.register(ApprovedResident)
 class ApprovedResidentAdmin(admin.ModelAdmin):
+    form = ApprovedResidentForm
     list_display = ["first_name", "last_name", "is_eligible", "is_claimed", "registered_user", "created_at"]
-    list_filter = ["is_eligible"]
+    list_filter = ["is_eligible", ClaimedFilter]
+    actions = ["mark_ineligible", "mark_eligible"]
     search_fields = ["first_name", "last_name", "normalized_first_name", "normalized_last_name"]
     autocomplete_fields = ["registered_user"]
     change_list_template = "admin/accounts/approvedresident/change_list.html"
@@ -198,6 +263,56 @@ class ApprovedResidentAdmin(admin.ModelAdmin):
     @admin.display(boolean=True, description="Claimed")
     def is_claimed(self, obj: ApprovedResident) -> bool:
         return obj.is_claimed
+
+    def save_model(self, request, obj, form, change):
+        was_eligible = (
+            ApprovedResident.objects.get(pk=obj.pk).is_eligible if change else None
+        )
+        if change and was_eligible and not obj.is_eligible:
+            # Route eligibility revocation through the full workflow so the
+            # linked account is safely deactivated in the same transaction.
+            services.revoke_eligibility(obj, actor=request.user)
+            if obj.registered_user is not None:
+                self.message_user(
+                    request,
+                    f"{obj} is no longer eligible: the linked account was "
+                    "deactivated, future reservations cancelled, and any "
+                    "assigned PIN flagged for physical removal.",
+                    messages.WARNING,
+                )
+            return
+        super().save_model(request, obj, form, change)
+
+    @admin.action(description="Mark ineligible (deactivates linked accounts)")
+    def mark_ineligible(self, request, queryset):
+        revoked = 0
+        for entry in queryset.filter(is_eligible=True):
+            try:
+                services.revoke_eligibility(entry, actor=request.user)
+                revoked += 1
+            except ValidationError as exc:
+                self.message_user(request, f"{entry}: {exc.messages[0]}", messages.ERROR)
+        if revoked:
+            self.message_user(
+                request,
+                f"Marked {revoked} resident(s) ineligible. Linked accounts were "
+                "deactivated; check Lockbox PINs for codes awaiting physical removal.",
+                messages.SUCCESS,
+            )
+
+    @admin.action(description="Mark eligible again (does not reactivate accounts)")
+    def mark_eligible(self, request, queryset):
+        restored = 0
+        for entry in queryset.filter(is_eligible=False):
+            services.restore_eligibility(entry)
+            restored += 1
+        if restored:
+            self.message_user(
+                request,
+                f"Marked {restored} resident(s) eligible. Linked accounts remain "
+                "deactivated until explicitly reactivated on the Users page.",
+                messages.SUCCESS,
+            )
 
     def has_delete_permission(self, request, obj=None):
         # A claimed entry backs a registered account; unlink or deactivate instead.
