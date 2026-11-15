@@ -73,7 +73,7 @@ class PasswordResetConfirmTests(TestCase):
         login = self.client.post(
             reverse("login"), {"username": "ana@example.com", "password": NEW_PASSWORD}
         )
-        self.assertRedirects(login, reverse("home"))
+        self.assertRedirects(login, reverse("schedule"))
 
     def test_weak_new_password_rejected(self):
         user = make_active_user()

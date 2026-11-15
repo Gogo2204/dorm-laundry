@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Schedule — Dorm Laundry{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <h1 class="h4 mb-0">Laundry schedule</h1>
+    <div class="btn-group" role="group" aria-label="Week selection">
+        <a href="{% url 'schedule' %}"
+           class="btn btn-sm {% if week == 'current' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+            This week
+        </a>
+        <a href="{% url 'schedule' %}?week=next"
+           class="btn btn-sm {% if week == 'next' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+            Next week
+        </a>
+    </div>
+</div>
+
+<p class="text-muted small">
+    Each slot books one washer + dryer set. Limit: two reservations per week,
+    no consecutive slots on the same day. Slot 22:00–02:00 belongs to the day
+    it starts.
+</p>
+
+<div class="row g-3">
+    {% for day in day_cards %}
+        <div class="col-12 col-md-6 col-xl-4">
+            <div class="card shadow-sm h-100 {% if day.is_today %}border-primary{% endif %}">
+                <div class="card-header {% if day.is_today %}bg-primary text-white{% endif %}">
+                    <strong>{{ day.date|date:"l" }}</strong>
+                    <span class="{% if day.is_today %}text-white-50{% else %}text-muted{% endif %} small">
+                        {{ day.date|date:"j N" }}{% if day.is_today %} · today{% endif %}
+                    </span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="text-nowrap small">Slot</th>
+                                {% for machine_set in machine_sets %}
+                                    <th scope="col" class="small text-center">{{ machine_set.name }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for slot in day.slots %}
+                                <tr>
+                                    <th scope="row" class="small text-nowrap fw-normal text-muted">
+                                        {{ slot.label }}
+                                    </th>
+                                    {% for cell in slot.cells %}
+                                        <td class="text-center">
+                                            {% if cell.reservation %}
+                                                <div class="small {% if cell.is_mine %}fw-bold{% endif %}">
+                                                    {{ cell.reservation.user.first_name }}
+                                                    {{ cell.reservation.user.last_name }}
+                                                </div>
+                                                {% if cell.is_mine %}
+                                                    <a class="btn btn-outline-danger btn-sm py-0"
+                                                       href="{% url 'cancel_reservation' cell.reservation.pk %}?next={{ week }}">
+                                                        Cancel
+                                                    </a>
+                                                {% endif %}
+                                            {% elif cell.bookable %}
+                                                <form method="post" action="{% url 'book_slot' %}">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="machine_set" value="{{ cell.machine_set.pk }}">
+                                                    <input type="hidden" name="booking_date" value="{{ day.date|date:'Y-m-d' }}">
+                                                    <input type="hidden" name="slot_number" value="{{ slot.number }}">
+                                                    <input type="hidden" name="week" value="{{ week }}">
+                                                    <button type="submit" class="btn btn-outline-primary btn-sm py-0">
+                                                        Book
+                                                    </button>
+                                                </form>
+                                            {% else %}
+                                                <span class="text-muted small">—</span>
+                                            {% endif %}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

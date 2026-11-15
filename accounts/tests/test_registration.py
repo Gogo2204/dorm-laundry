@@ -115,7 +115,7 @@ class RegistrationTests(TestCase):
         )
         self.client.force_login(user)
         response = self.client.get(self.url)
-        self.assertRedirects(response, reverse("home"))
+        self.assertRedirects(response, reverse("schedule"))
 
 
 class RegistrationConcurrencyTests(TestCase):
