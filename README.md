@@ -50,6 +50,18 @@ and the matching `ADMIN2_*` variables in the environment (see
 `.env.example`) and run the same command non-interactively. The command is
 idempotent: re-running it skips administrators that already exist.
 
+## Trying the registration flow locally
+
+1. Log into Django Admin and add an approved resident (or use
+   *Approved residents → Import from CSV*).
+2. Open <http://127.0.0.1:8000/accounts/register/> and register with that
+   exact first/last name (case and extra spaces don't matter).
+3. The verification email is printed to the `runserver` console; open the
+   link it contains to activate the account.
+4. Log in at <http://127.0.0.1:8000/accounts/login/> with the email and
+   password. Password reset works the same way — the email appears in the
+   console.
+
 ## Checks and tests
 
 ```bash

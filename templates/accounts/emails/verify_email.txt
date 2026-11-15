@@ -1,0 +1,12 @@
+Hello {{ user.first_name }},
+
+Thank you for registering with Dorm Laundry.
+
+Please confirm your email address by opening this link:
+
+{{ verification_url }}
+
+The link expires after {{ timeout_hours }} hours. If you did not register,
+you can ignore this email.
+
+— Dorm Laundry

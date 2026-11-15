@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}My Account — Dorm Laundry{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h1 class="h4 mb-4">My Account</h1>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Name</dt>
+                    <dd class="col-sm-8">{{ user.first_name }} {{ user.last_name }}</dd>
+                    <dt class="col-sm-4">Email</dt>
+                    <dd class="col-sm-8">{{ user.email }}</dd>
+                    <dt class="col-sm-4">Email verified</dt>
+                    <dd class="col-sm-8">{% if user.email_verified %}Yes{% else %}No{% endif %}</dd>
+                    <dt class="col-sm-4">Lockbox PIN</dt>
+                    <dd class="col-sm-8 text-muted">Available here once PIN delivery opens.</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

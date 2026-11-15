@@ -121,6 +121,14 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "home"
+LOGOUT_REDIRECT_URL = "home"
+
+# How long email verification links stay valid, in seconds (default 72 hours).
+EMAIL_VERIFICATION_TIMEOUT = int(os.environ.get("EMAIL_VERIFICATION_TIMEOUT", str(60 * 60 * 72)))
+
+
 # Internationalization
 
 LANGUAGE_CODE = "en-us"
