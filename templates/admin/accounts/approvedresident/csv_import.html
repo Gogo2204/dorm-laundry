@@ -1,0 +1,16 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<p>
+    Upload a UTF-8 CSV file with two columns: first name, last name.
+    A header row <code>first_name,last_name</code> is optional.
+    Duplicate names (after normalization) are skipped.
+</p>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" class="default" value="Import">
+    <a class="button" href="{{ back_url }}">Cancel</a>
+</form>
+{% endblock %}
