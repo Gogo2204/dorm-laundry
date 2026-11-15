@@ -1,7 +1,28 @@
 from django.contrib import admin, messages
+from django.utils import timezone
 
 from . import services
 from .models import MachineSet, Reservation
+
+
+class TimingFilter(admin.SimpleListFilter):
+    """Quickly narrow the list to upcoming (still relevant) reservations."""
+
+    title = "timing"
+    parameter_name = "timing"
+
+    def lookups(self, request, model_admin):
+        return [("upcoming", "Upcoming (active, today or later)"), ("past", "Past dates")]
+
+    def queryset(self, request, queryset):
+        today = timezone.localdate()
+        if self.value() == "upcoming":
+            return queryset.filter(
+                status=Reservation.Status.ACTIVE, booking_date__gte=today
+            )
+        if self.value() == "past":
+            return queryset.filter(booking_date__lt=today)
+        return queryset
 
 
 @admin.register(MachineSet)
@@ -32,7 +53,7 @@ class ReservationAdmin(admin.ModelAdmin):
         "counts_toward_quota",
         "cancelled_by",
     ]
-    list_filter = ["status", "machine_set", "booking_date"]
+    list_filter = [TimingFilter, "status", "machine_set", "booking_date"]
     search_fields = ["user__first_name", "user__last_name", "user__email"]
     date_hierarchy = "booking_date"
     actions = ["cancel_reservations"]

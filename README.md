@@ -127,6 +127,60 @@ All sensitive PIN operations (import, programming, assignment, delivery
 attempts, retries, revocation) are recorded in the *PIN audit entries* log,
 which never contains PIN values.
 
+## Administration procedures
+
+### Deactivating a resident
+
+Use Users → "Deactivate selected users" (or uncheck *Active* on the user's
+change form — both paths are equivalent). In one atomic operation this:
+
+- blocks login immediately (existing sessions included);
+- cancels all **future** reservations (they release the weekly quota;
+  reservations already in progress are kept);
+- marks any assigned PIN **REVOKE_PENDING** and cancels pending PIN emails;
+- records when and by which administrator the account was deactivated.
+
+Repeating a deactivation is harmless. Then complete the **PIN revocation
+checklist** below — the physical code keeps working until you do.
+
+### Membership eligibility
+
+To withdraw a resident's laundry authorization, use Approved residents →
+**"Mark ineligible (deactivates linked accounts)"** (or uncheck *Is
+eligible* on the entry). If the name is registered, the full deactivation
+workflow above runs automatically. The entry stays linked to the account,
+so nobody else can claim the name and no duplicate account can appear.
+"Mark eligible again" restores registrability/reactivatability but
+deliberately does **not** reactivate the account.
+
+### Reactivating a resident
+
+1. If their approved-list entry was marked ineligible, restore eligibility
+   first (reactivation is refused otherwise).
+2. Users → select the account → **"Reactivate selected users"**. A verified
+   resident regains access immediately; an unverified one must still
+   complete email verification.
+3. Cancelled reservations stay cancelled; the old PIN stays in the
+   revocation pipeline. Assign a fresh PIN with **"Allocate lockbox PINs"**
+   once AVAILABLE inventory exists.
+
+### PIN revocation checklist
+
+1. Lockbox PINs → filter status **REVOKE_PENDING**.
+2. Physically delete each code on the lockbox keypad; verify it no longer
+   opens the box.
+3. Select the PINs → **"Confirm physical removal"** → confirm. They become
+   REVOKED (terminal, never reused automatically).
+
+### Administrator safeguards
+
+All administrators have equal permissions; promote/demote via the user
+change form (staff + superuser flags). Every path — forms, bulk actions,
+deactivation, eligibility revocation, deletion — refuses to remove the
+**last active administrator**. Ordinary residents can never access Django
+Admin. Reservation history and the PIN audit log are append-only: no adding,
+editing, or deleting through the admin.
+
 ### Known hardware limitations
 
 Before launch, confirm the chosen lockbox supports at least 80

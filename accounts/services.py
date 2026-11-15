@@ -175,32 +175,101 @@ def check_admin_delete(user: User) -> None:
     check_admin_change(user, is_active=False, is_staff=False, is_superuser=False)
 
 
+def finalize_deactivation(user: User, *, actor: User | None = None) -> None:
+    """Side effects every deactivation path must apply, exactly once each:
+
+    - the assigned lockbox PIN becomes REVOKE_PENDING (physical removal is
+      still a manual admin task on the offline lockbox);
+    - pending PIN deliveries are cancelled;
+    - future reservations are cancelled and release their weekly quota;
+      already-started reservations are untouched.
+
+    Each step is a no-op when already done, so repeated calls are safe. Used
+    by `deactivate_user` and by the Django Admin change-form path.
+    """
+    from access_codes.services import mark_revoke_pending_for_user
+    from laundry.services import cancel_future_reservations_for_user
+
+    with transaction.atomic():
+        mark_revoke_pending_for_user(user, actor=actor)
+        cancel_future_reservations_for_user(user, cancelled_by=actor)
+
+
 def deactivate_user(user: User, *, actor: User | None = None) -> None:
     """Administratively deactivate an account (login is blocked immediately).
 
-    Marks `deactivated_at` so email verification and password reset can never
-    reactivate the account, and flags the resident's assigned lockbox PIN as
-    REVOKE_PENDING. The physical PIN keeps working until an administrator
-    removes it from the offline lockbox and confirms removal in Django Admin.
+    Atomic and idempotent: marks `deactivated_at` (kept from the first
+    deactivation on repeats) so email verification and password reset can
+    never reactivate the account, records the responsible administrator,
+    flags the assigned lockbox PIN REVOKE_PENDING, cancels pending PIN
+    deliveries, and cancels future reservations. The physical PIN keeps
+    working until an administrator removes it from the offline lockbox and
+    confirms removal in Django Admin.
     """
     check_admin_change(user, is_active=False, is_staff=user.is_staff, is_superuser=user.is_superuser)
-    from access_codes.services import mark_revoke_pending_for_user
 
     with transaction.atomic():
         user.is_active = False
-        user.deactivated_at = timezone.now()
-        user.save(update_fields=["is_active", "deactivated_at"])
-        mark_revoke_pending_for_user(user, actor=actor)
+        if user.deactivated_at is None:
+            user.deactivated_at = timezone.now()
+            user.deactivated_by = actor
+        user.save(update_fields=["is_active", "deactivated_at", "deactivated_by"])
+        finalize_deactivation(user, actor=actor)
+
+
+def revoke_eligibility(entry: ApprovedResident, *, actor: User | None = None) -> None:
+    """Mark an approved resident ineligible and safely retire their account.
+
+    If the entry has a registered account, the full deactivation workflow runs
+    atomically with the eligibility change: access blocked, future
+    reservations cancelled, PIN flagged REVOKE_PENDING, pending deliveries
+    cancelled. Historical records are preserved and the entry stays linked to
+    the account, so the name cannot be re-claimed by someone else and no
+    duplicate account can appear if eligibility is later restored.
+
+    Raises ValidationError if the linked account is the last active
+    administrator.
+    """
+    with transaction.atomic():
+        if entry.registered_user is not None:
+            deactivate_user(entry.registered_user, actor=actor)
+        entry.is_eligible = False
+        entry.save()
+
+
+def restore_eligibility(entry: ApprovedResident) -> None:
+    """Re-allow an approved resident. Deliberately does NOT reactivate a
+    linked account — that is a separate, explicit administrator step
+    (`reactivate_user`), after which a fresh PIN can be allocated."""
+    entry.is_eligible = True
+    entry.save()
+
+
+def check_can_reactivate(user: User) -> None:
+    """Raise if reactivating `user` would bypass approved-resident eligibility."""
+    entry = getattr(user, "approved_resident", None)
+    if entry is not None and not entry.is_eligible:
+        raise ValidationError(
+            "This resident's approved-list entry is marked ineligible. Restore "
+            "eligibility on the approved residents list before reactivating "
+            "the account."
+        )
 
 
 def reactivate_user(user: User) -> None:
-    """Clear an administrative deactivation; verification state is unchanged.
+    """Clear an administrative deactivation (administrator workflow only).
 
-    Deliberately does NOT restore the user's previous lockbox PIN: once a PIN
-    enters the revocation process it stays there. To give a reactivated
-    resident lockbox access again, an administrator assigns a fresh PIN via
-    the "Allocate PINs" action in Django Admin (audited).
+    - Access returns only if the email was already verified; an unverified
+      account stays inactive until the resident completes verification.
+    - Refuses to reactivate a resident whose approved-list entry is no longer
+      eligible.
+    - Deliberately does NOT restore cancelled reservations or the previous
+      lockbox PIN: once a PIN enters the revocation process it stays there.
+      To give a reactivated resident lockbox access again, an administrator
+      assigns a fresh PIN via the "Allocate lockbox PINs" action (audited).
     """
+    check_can_reactivate(user)
     user.is_active = user.email_verified
     user.deactivated_at = None
-    user.save(update_fields=["is_active", "deactivated_at"])
+    user.deactivated_by = None
+    user.save(update_fields=["is_active", "deactivated_at", "deactivated_by"])

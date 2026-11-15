@@ -58,6 +58,14 @@ class User(AbstractUser):
             "accounts with this set are never reactivated by email links."
         ),
     )
+    deactivated_by = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="deactivated_users",
+        help_text="Administrator responsible for the deactivation, when known.",
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["first_name", "last_name"]
