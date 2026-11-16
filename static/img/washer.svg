@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" fill="none" stroke-linecap="round" stroke-linejoin="round">
+<defs><pattern id="d" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="1.5" fill="#e8b54a"/></pattern>
+<radialGradient id="f" cx=".5" cy=".5" r=".5"><stop offset=".35" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<mask id="m"><circle cx="100" cy="138" r="96" fill="url(#f)"/></mask></defs>
+<rect width="200" height="240" fill="url(#d)" mask="url(#m)" opacity=".5"/>
+<g stroke="#f2e8d5" stroke-width="3">
+<rect x="28" y="22" width="144" height="196" rx="5" fill="#14110e"/>
+<path d="M28 62h144"/>
+<rect x="116" y="36" width="42" height="12" rx="2"/>
+<circle cx="100" cy="140" r="52" fill="#1c1814"/>
+<circle cx="100" cy="140" r="40"/>
+</g>
+<circle cx="46" cy="42" r="6" stroke="#e8b54a" stroke-width="3"/><circle cx="70" cy="42" r="4" fill="#e8b54a"/><circle cx="86" cy="42" r="4" fill="#5c5246"/>
+<path d="M66 148c11-12 23-12 34 0s23 12 34 0" stroke="#4a8df0" stroke-width="3"/>
+<path d="M72 160c9-9 19-9 28 0s19 9 28 0" stroke="#4a8df0" stroke-width="2" opacity=".55"/>
+<path d="M80 112a40 40 0 0 1 22-10" stroke="#f2e8d5" stroke-width="3" opacity=".6"/>
+<path d="M36 226h128" stroke="#3a332b" stroke-width="3"/>
+</svg>

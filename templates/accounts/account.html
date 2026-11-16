@@ -3,58 +3,54 @@
 {% block title %}Моят профил — Пералня{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
-        <div class="card shadow-sm mb-4">
-            <div class="card-body p-4">
-                <h1 class="h4 mb-4">Моят профил</h1>
-                <dl class="row mb-0">
-                    <dt class="col-sm-4">Име</dt>
-                    <dd class="col-sm-8">{{ user.first_name }} {{ user.last_name }}</dd>
-                    <dt class="col-sm-4">Имейл</dt>
-                    <dd class="col-sm-8">{{ user.email }}</dd>
-                    <dt class="col-sm-4">Потвърден имейл</dt>
-                    <dd class="col-sm-8">{% if user.email_verified %}Да{% else %}Не{% endif %}</dd>
-                </dl>
-            </div>
-        </div>
-
-        <div class="card shadow-sm">
-            <div class="card-body p-4">
-                <h2 class="h5 mb-3">ПИН код за кутията с ключ</h2>
-                {% if assigned_pin %}
-                    {% if revealed_pin %}
-                        <p class="mb-2">Вашият ПИН код е:</p>
-                        <p><code class="fs-3">{{ revealed_pin }}</code></p>
-                        <p class="text-muted small mb-3">
-                            ПИН кодът се показва само при поискване и не се съхранява в страницата.
-                            Презаредете страницата, за да го скриете отново.
-                        </p>
-                    {% else %}
-                        <p class="mb-2">Вашият ПИН код: <code class="fs-4">••••••</code></p>
-                        <form method="post" action="{% url 'reveal_pin' %}" class="mb-3">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-outline-primary btn-sm">
-                                Покажи ПИН кода
-                            </button>
-                        </form>
-                    {% endif %}
-                    <p class="text-muted small mb-0">
-                        Този ПИН код отваря общата кутия с ключа за пералното помещение.
-                        Той е личен — не го споделяйте с никого.
-                    </p>
-                {% elif user.email_verified %}
-                    <p class="text-muted mb-0">
-                        Вашият ПИН код очаква назначаване от администратор.
-                        Ще го получите по имейл веднага щом има свободен.
-                    </p>
-                {% else %}
-                    <p class="text-muted mb-0">
-                        ПИН код се назначава, след като потвърдите имейл адреса си.
-                    </p>
-                {% endif %}
-            </div>
-        </div>
+<div class="medium stack">
+    <div class="head">
+        <h1>Моят профил</h1>
     </div>
+
+    <section class="plate plate-body">
+        <dl class="facts">
+            <dt class="label">Име</dt>
+            <dd>{{ user.first_name }} {{ user.last_name }}</dd>
+            <dt class="label">Имейл</dt>
+            <dd>{{ user.email }}</dd>
+            <dt class="label">Потвърден имейл</dt>
+            <dd>{% if user.email_verified %}Да{% else %}Не{% endif %}</dd>
+        </dl>
+    </section>
+
+    <section class="plate plate-body halftone">
+        <h2>ПИН код за кутията с ключ</h2>
+        {% if assigned_pin %}
+            {% if revealed_pin %}
+                <p class="muted tight">Вашият ПИН код е:</p>
+                <code class="pin">{{ revealed_pin }}</code>
+                <p class="muted small">
+                    ПИН кодът се показва само при поискване и не се съхранява в страницата.
+                    Презаредете страницата, за да го скриете отново.
+                </p>
+            {% else %}
+                <p class="muted tight">Вашият ПИН код:</p>
+                <code class="pin">••••••</code>
+                <form method="post" action="{% url 'reveal_pin' %}" class="gap-below">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary">Покажи ПИН кода</button>
+                </form>
+            {% endif %}
+            <p class="muted small flush">
+                Този ПИН код отваря общата кутия с ключа за пералното помещение.
+                Той е личен — не го споделяйте с никого.
+            </p>
+        {% elif user.email_verified %}
+            <p class="muted flush">
+                Вашият ПИН код очаква назначаване от администратор.
+                Ще го получите по имейл веднага щом има свободен.
+            </p>
+        {% else %}
+            <p class="muted flush">
+                ПИН код се назначава, след като потвърдите имейл адреса си.
+            </p>
+        {% endif %}
+    </section>
 </div>
 {% endblock %}
