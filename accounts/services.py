@@ -3,6 +3,7 @@ and the last-active-administrator safeguard.
 """
 
 import enum
+import logging
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -16,6 +17,8 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .models import ApprovedResident, User, normalize_name
+
+logger = logging.getLogger(__name__)
 
 EMAIL_VERIFICATION_SALT = "accounts.email-verification"
 
@@ -88,7 +91,13 @@ def make_verification_token(user: User) -> str:
     return signing.dumps({"uid": user.pk, "email": user.email}, salt=EMAIL_VERIFICATION_SALT)
 
 
-def send_verification_email(user: User, request: HttpRequest) -> None:
+def send_verification_email(user: User, request: HttpRequest) -> bool:
+    """Send the verification link; return False instead of raising on failure.
+
+    A mail outage must not turn an already-saved registration into a server
+    error. The failure is logged (without the token) and the caller tells the
+    user; an administrator can resend the link from the admin.
+    """
     url = request.build_absolute_uri(
         reverse("verify_email", args=[make_verification_token(user)])
     )
@@ -96,7 +105,18 @@ def send_verification_email(user: User, request: HttpRequest) -> None:
         "accounts/emails/verify_email.txt",
         {"user": user, "verification_url": url, "timeout_hours": settings.EMAIL_VERIFICATION_TIMEOUT // 3600},
     )
-    send_mail("Потвърдете регистрацията си — Пералня на общежитието", body, None, [user.email])
+    try:
+        send_mail(
+            "Потвърдете регистрацията си — Пералня на общежитието",
+            body,
+            None,
+            [user.email],
+            fail_silently=False,
+        )
+    except Exception:
+        logger.exception("Verification email could not be sent (user id=%s).", user.pk)
+        return False
+    return True
 
 
 def verify_email_token(token: str) -> tuple[VerificationResult, User | None]:

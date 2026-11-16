@@ -75,7 +75,7 @@ class UserAdmin(DjangoUserAdmin):
     ]
     list_filter = ["is_active", "email_verified", "is_staff", "is_superuser", AwaitingPINFilter]
     search_fields = ["email", "first_name", "last_name"]
-    actions = ["deactivate_users", "reactivate_users", "allocate_pins"]
+    actions = ["deactivate_users", "reactivate_users", "allocate_pins", "resend_verification_emails"]
     readonly_fields = ["deactivated_by", "last_login", "date_joined"]
 
     fieldsets = (
@@ -179,6 +179,31 @@ class UserAdmin(DjangoUserAdmin):
             self.message_user(
                 request,
                 f"Пропуснати потребители: {skipped} (вече имат ПИН код или не са допустими).",
+                messages.WARNING,
+            )
+
+    @admin.action(description="Изпрати отново имейла за потвърждение")
+    def resend_verification_emails(self, request, queryset):
+        eligible = queryset.filter(email_verified=False, deactivated_at__isnull=True)
+        skipped = queryset.count() - eligible.count()
+        sent = failed = 0
+        for user in eligible:
+            if services.send_verification_email(user, request):
+                sent += 1
+            else:
+                failed += 1
+        if sent:
+            self.message_user(request, f"Изпратени имейли за потвърждение: {sent}.", messages.SUCCESS)
+        if failed:
+            self.message_user(
+                request,
+                f"Неуспешно изпращане: {failed}. Проверете настройките за имейл и опитайте отново.",
+                messages.ERROR,
+            )
+        if skipped:
+            self.message_user(
+                request,
+                f"Пропуснати потребители: {skipped} (вече потвърдени или деактивирани).",
                 messages.WARNING,
             )
 
