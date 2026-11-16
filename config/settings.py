@@ -34,6 +34,10 @@ if not SECRET_KEY:
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1" if DEBUG else "")
 
+# Scheme-qualified origins trusted for CSRF behind the HTTPS reverse proxy,
+# e.g. "https://laundry.example.com".
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
+
 
 # Application definition
 
@@ -177,13 +181,40 @@ DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "webmaster@localhost")
 
 
 # Security hardening outside local development.
+#
+# Bootstrap note: during the very first deployment (before the Let's Encrypt
+# certificate exists) set DJANGO_SECURE_SSL_REDIRECT=false and
+# DJANGO_HSTS_SECONDS=0, obtain the certificate, verify HTTPS works, then
+# re-enable both. Never ship long HSTS before HTTPS is confirmed working.
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
+    SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_HSTS_SECONDS", str(60 * 60 * 24 * 30)))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # Trust Nginx's X-Forwarded-Proto so Django knows the request was HTTPS.
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_REFERRER_POLICY = "same-origin"
 
 SESSION_COOKIE_HTTPONLY = True
+
+
+# Logging: everything to stderr so systemd/journald captures it in production
+# and `runserver` shows it in development. No secrets, tokens, or PINs are
+# ever logged by application code; DisallowedHost noise is kept quiet.
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {"format": "{levelname} {asctime} {name} {message}", "style": "{"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "simple"},
+    },
+    "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {
+        "django.security.DisallowedHost": {"level": "ERROR", "propagate": True},
+    },
+}

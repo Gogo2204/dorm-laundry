@@ -1,0 +1,49 @@
+# Gunicorn systemd unit for Dorm Laundry.
+# Install as /etc/systemd/system/dorm-laundry.service, then:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now dorm-laundry
+#
+# Placeholders: replace <APP_USER> (dedicated non-root system user, e.g.
+# "laundry") and <APP_DIR> (e.g. /srv/dorm-laundry/app).
+#
+# Status / logs (no secrets are ever printed by the application):
+#   systemctl status dorm-laundry
+#   journalctl -u dorm-laundry -e
+# Graceful reload after a code update (re-execs workers without dropping
+# connections):
+#   sudo systemctl reload dorm-laundry
+
+[Unit]
+Description=Dorm Laundry (Gunicorn)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=notify
+User=<APP_USER>
+Group=www-data
+WorkingDirectory=<APP_DIR>
+# Environment lives OUTSIDE the git checkout, root-owned, mode 640
+# (root:<APP_USER>), so secrets never enter the repository or the journal.
+EnvironmentFile=/etc/dorm-laundry/env
+RuntimeDirectory=dorm-laundry
+# Unix socket only — Gunicorn is never reachable from the network.
+# 3 workers suit a 1 GB Lightsail instance (1 vCPU); use 2 on 512 MB.
+ExecStart=<APP_DIR>/.venv/bin/gunicorn config.wsgi:application \
+    --workers 3 \
+    --max-requests 1000 --max-requests-jitter 100 \
+    --bind unix:/run/dorm-laundry/gunicorn.sock \
+    --timeout 60 \
+    --access-logfile - --error-logfile -
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+
+# Hardening: the service cannot gain privileges or write outside its dirs.
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
