@@ -9,7 +9,7 @@ implementation phases.
 
 ## Stack
 
-- Python 3.12+, Django 5.2 (server-rendered templates, Bootstrap 5)
+- Python 3.12+, Django 5.2 (server-rendered templates, own CSS — no framework or CDN)
 - SQLite locally, PostgreSQL in production
 - Amazon SES for email, AWS Lightsail + Nginx + Gunicorn for hosting (Phase 6)
 
@@ -235,7 +235,7 @@ config/        Django project (settings, urls, wsgi)
 accounts/      custom email-login user model, registration (Phase 2)
 laundry/       machine sets, reservations, schedule (Phase 3)
 access_codes/  encrypted lockbox PIN inventory and allocation (Phase 4)
-templates/     server-rendered templates (Bootstrap 5)
+templates/     server-rendered templates; styles, fonts, icons in static/
 static/        static assets
 requirements/  base / dev / production dependency sets
 ```

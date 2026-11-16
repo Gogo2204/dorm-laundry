@@ -72,7 +72,7 @@ class ScheduleViewTests(TestCase):
             response = self.client.get(reverse("schedule"))
         # Brand links to the schedule; there is no separate Home item.
         self.assertContains(
-            response, f'class="navbar-brand" href="{reverse("schedule")}"'
+            response, f'class="brand" href="{reverse("schedule")}"'
         )
         self.assertNotContains(response, ">Home<")
         self.assertContains(response, ">График<")
@@ -87,9 +87,11 @@ class ScheduleViewTests(TestCase):
         self.client.force_login(self.ana)
         with freeze_now():
             response = self.client.get(reverse("schedule"))
-        # Responsive stacking columns and scroll containers, no fixed-width grid.
-        self.assertContains(response, "col-12 col-md-6 col-xl-4")
-        self.assertContains(response, "table-responsive")
+        # Day cards flow into as many columns as fit; each day's table fits its
+        # card (fixed layout), so a phone never scrolls sideways.
+        self.assertContains(response, 'class="days"')
+        self.assertContains(response, 'class="grid"')
+        self.assertNotContains(response, "table-responsive")
         self.assertContains(response, 'name="viewport" content="width=device-width')
 
 

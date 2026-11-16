@@ -3,88 +3,96 @@
 {% block title %}График — Пералня{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-    <h1 class="h4 mb-0">График на пералнята</h1>
-    <div class="btn-group" role="group" aria-label="Избор на седмица">
-        <a href="{% url 'schedule' %}"
-           class="btn btn-sm {% if week == 'current' %}btn-primary{% else %}btn-outline-primary{% endif %}">
-            Тази седмица
-        </a>
-        <a href="{% url 'schedule' %}?week=next"
-           class="btn btn-sm {% if week == 'next' %}btn-primary{% else %}btn-outline-primary{% endif %}">
-            Следваща седмица
-        </a>
+<div class="head head-row">
+    <div>
+        <span class="label">{% if week == 'next' %}Следваща седмица{% else %}Тази седмица{% endif %}</span>
+        <h1>График на пералнята</h1>
     </div>
+    <nav class="seg" aria-label="Избор на седмица">
+        <a href="{% url 'schedule' %}"{% if week == 'current' %} aria-current="page"{% endif %}>Тази седмица</a>
+        <a href="{% url 'schedule' %}?week=next"{% if week == 'next' %} aria-current="page"{% endif %}>Следваща седмица</a>
+    </nav>
 </div>
 
-<p class="text-muted small">
-    Всеки интервал резервира един комплект пералня и сушилня. Лимит: две
-    резервации на седмица, без последователни интервали в един ден. Интервалът
-    22:00–02:00 принадлежи към деня, в който започва.
-</p>
+<ul class="rules">
+    <li><b>1 интервал</b>Всеки интервал резервира един комплект пералня и сушилня.</li>
+    <li><b>2 на седмица</b>Лимит: две резервации на седмица.</li>
+    <li><b>Без поредни</b>Без последователни интервали в един ден.</li>
+    <li><b>22:00–02:00</b>Интервалът принадлежи към деня, в който започва.</li>
+</ul>
 
-<div class="row g-3">
+<ul class="legend small muted" aria-hidden="true">
+    <li><span class="swatch swatch-free"></span>Свободно</li>
+    <li><span class="swatch swatch-mine"></span>Ваше</li>
+    <li><span class="swatch swatch-taken"></span>Заето</li>
+</ul>
+
+<div class="days">
     {% for day in day_cards %}
-        <div class="col-12 col-md-6 col-xl-4">
-            <div class="card shadow-sm h-100 {% if day.is_today %}border-primary{% endif %}">
-                <div class="card-header {% if day.is_today %}bg-primary text-white{% endif %}">
-                    <strong>{{ day.date|date:"l" }}</strong>
-                    <span class="{% if day.is_today %}text-white-50{% else %}text-muted{% endif %} small">
-                        {{ day.date|date:"j N" }}{% if day.is_today %} · днес{% endif %}
-                    </span>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th scope="col" class="text-nowrap small">Интервал</th>
-                                {% for machine_set in machine_sets %}
-                                    <th scope="col" class="small text-center">{{ machine_set.name }}</th>
-                                {% endfor %}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for slot in day.slots %}
-                                <tr>
-                                    <th scope="row" class="small text-nowrap fw-normal text-muted">
-                                        {{ slot.label }}
-                                    </th>
-                                    {% for cell in slot.cells %}
-                                        <td class="text-center">
-                                            {% if cell.reservation %}
-                                                <div class="small {% if cell.is_mine %}fw-bold{% endif %}">
-                                                    {{ cell.reservation.user.first_name }}
-                                                    {{ cell.reservation.user.last_name }}
-                                                </div>
-                                                {% if cell.is_mine %}
-                                                    <a class="btn btn-outline-danger btn-sm py-0"
-                                                       href="{% url 'cancel_reservation' cell.reservation.pk %}?next={{ week }}">
-                                                        Откажи
-                                                    </a>
-                                                {% endif %}
-                                            {% elif cell.bookable %}
-                                                <form method="post" action="{% url 'book_slot' %}">
-                                                    {% csrf_token %}
-                                                    <input type="hidden" name="machine_set" value="{{ cell.machine_set.pk }}">
-                                                    <input type="hidden" name="booking_date" value="{{ day.date|date:'Y-m-d' }}">
-                                                    <input type="hidden" name="slot_number" value="{{ slot.number }}">
-                                                    <input type="hidden" name="week" value="{{ week }}">
-                                                    <button type="submit" class="btn btn-outline-primary btn-sm py-0">
-                                                        Резервирай
-                                                    </button>
-                                                </form>
-                                            {% else %}
-                                                <span class="text-muted small">—</span>
-                                            {% endif %}
-                                        </td>
-                                    {% endfor %}
-                                </tr>
+        <section class="plate day{% if day.is_today %} is-today{% endif %}"
+                 aria-label="{{ day.date|date:'l, j N' }}">
+            <header class="day-head{% if day.is_today %} halftone{% endif %}">
+                <span class="day-num">{{ day.date|date:"j" }}</span>
+                <span>
+                    <span class="day-name">{{ day.date|date:"l" }}</span>
+                    <span class="day-month label">{{ day.date|date:"F" }}</span>
+                </span>
+                {% if day.is_today %}<span class="stamp">днес</span>{% endif %}
+            </header>
+            <table class="grid">
+                <colgroup>
+                    <col class="time">
+                    {% for machine_set in machine_sets %}<col>{% endfor %}
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th scope="col" class="label">Час</th>
+                        {% for machine_set in machine_sets %}
+                            <th scope="col" title="{{ machine_set.name }}">{{ machine_set.name }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for slot in day.slots %}
+                        <tr>
+                            <th scope="row" aria-label="{{ slot.label }}">
+                                {{ slot.label|slice:":5" }}<span class="to">{{ slot.label|slice:"6:" }}</span>
+                            </th>
+                            {% for cell in slot.cells %}
+                                <td>
+                                    {% if cell.reservation %}
+                                        {% if cell.is_mine %}
+                                            <div class="cell cell-mine">
+                                                <span class="who">{{ cell.reservation.user.first_name }} {{ cell.reservation.user.last_name }}</span>
+                                                <a href="{% url 'cancel_reservation' cell.reservation.pk %}?next={{ week }}">Откажи</a>
+                                            </div>
+                                        {% else %}
+                                            <div class="cell cell-taken">
+                                                {{ cell.reservation.user.first_name }} {{ cell.reservation.user.last_name }}
+                                            </div>
+                                        {% endif %}
+                                    {% elif cell.bookable %}
+                                        <form method="post" action="{% url 'book_slot' %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="machine_set" value="{{ cell.machine_set.pk }}">
+                                            <input type="hidden" name="booking_date" value="{{ day.date|date:'Y-m-d' }}">
+                                            <input type="hidden" name="slot_number" value="{{ slot.number }}">
+                                            <input type="hidden" name="week" value="{{ week }}">
+                                            <button type="submit" class="cell cell-free"
+                                                    aria-label="Резервирай {{ cell.machine_set.name }}, {{ day.date|date:'l' }} {{ slot.label }}">
+                                                Резервирай
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <span class="cell-off" aria-label="Недостъпно">—</span>
+                                    {% endif %}
+                                </td>
                             {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
     {% endfor %}
 </div>
 {% endblock %}

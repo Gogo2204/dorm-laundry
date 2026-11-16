@@ -3,40 +3,35 @@
 {% block title %}Отказ на резервация — Пералня{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
-        <div class="card shadow-sm">
-            <div class="card-body p-4">
-                <h1 class="h4 mb-3">Да откажем ли тази резервация?</h1>
-                <dl class="row">
-                    {% if reservation.user != user %}
-                        <dt class="col-sm-4">Живущ</dt>
-                        <dd class="col-sm-8">
-                            {{ reservation.user.first_name }} {{ reservation.user.last_name }}
-                        </dd>
-                    {% endif %}
-                    <dt class="col-sm-4">Комплект</dt>
-                    <dd class="col-sm-8">{{ reservation.machine_set.name }}</dd>
-                    <dt class="col-sm-4">Дата</dt>
-                    <dd class="col-sm-8">{{ reservation.booking_date|date:"l, j N Y" }}</dd>
-                    <dt class="col-sm-4">Час</dt>
-                    <dd class="col-sm-8">{{ slot_label }}</dd>
-                </dl>
-                <p class="text-muted small">
-                    Отказ преди началото на интервала освобождава седмичния ви лимит.
-                    Отказ след началото продължава да се брои към лимита.
-                </p>
-                <form method="post">
-                    {% csrf_token %}
-                    <input type="hidden" name="next" value="{{ next }}">
-                    <button type="submit" class="btn btn-danger">Да, откажи я</button>
-                    <a class="btn btn-outline-secondary"
-                       href="{% if next == 'reservations' %}{% url 'my_reservations' %}{% else %}{% url 'schedule' %}{% if next == 'next' %}?week=next{% endif %}{% endif %}">
-                        Запази резервацията
-                    </a>
-                </form>
-            </div>
-        </div>
-    </div>
+<div class="medium">
+    <section class="plate plate-body">
+        <span class="label">Отказ</span>
+        <h1>Да откажем ли тази резервация?</h1>
+        <dl class="facts">
+            {% if reservation.user != user %}
+                <dt class="label">Живущ</dt>
+                <dd>{{ reservation.user.first_name }} {{ reservation.user.last_name }}</dd>
+            {% endif %}
+            <dt class="label">Комплект</dt>
+            <dd>{{ reservation.machine_set.name }}</dd>
+            <dt class="label">Дата</dt>
+            <dd>{{ reservation.booking_date|date:"l, j N Y" }}</dd>
+            <dt class="label">Час</dt>
+            <dd>{{ slot_label }}</dd>
+        </dl>
+        <p class="muted small gap-above">
+            Отказ преди началото на интервала освобождава седмичния ви лимит.
+            Отказ след началото продължава да се брои към лимита.
+        </p>
+        <form method="post" class="btn-row">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}">
+            <button type="submit" class="btn btn-danger">Да, откажи я</button>
+            <a class="btn"
+               href="{% if next == 'reservations' %}{% url 'my_reservations' %}{% else %}{% url 'schedule' %}{% if next == 'next' %}?week=next{% endif %}{% endif %}">
+                Запази резервацията
+            </a>
+        </form>
+    </section>
 </div>
 {% endblock %}
