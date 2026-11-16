@@ -240,6 +240,24 @@ static/        static assets
 requirements/  base / dev / production dependency sets
 ```
 
+## Production deployment
+
+Production runs on a single low-cost AWS Lightsail Ubuntu server: Nginx
+(HTTPS via Let's Encrypt, rate-limited auth endpoints) → Gunicorn (unix
+socket, systemd) → Django → PostgreSQL (localhost only), with Amazon SES for
+email and encrypted nightly `pg_dump` backups to a private S3 bucket. A
+minimal `/health/` endpoint supports smoke tests and uptime monitoring.
+
+The complete step-by-step runbook — server setup, PostgreSQL, systemd/Nginx
+configs (see `deploy/`), SES, backups/restore, security hardening, update
+and rollback procedures, and estimated monthly costs — lives in
+[`docs/AWS_DEPLOYMENT.md`](docs/AWS_DEPLOYMENT.md).
+
+True concurrency tests (double-booking, quota races, PIN-allocation races)
+run against PostgreSQL in CI via a disposable service container; locally
+they are skipped on SQLite and can be run with `DB_ENGINE=postgresql` and a
+local PostgreSQL instance.
+
 ## Security notes
 
 - Never commit `.env`, database files, credentials, encryption keys, or PINs.
