@@ -9,6 +9,8 @@ from django.views.generic import FormView, TemplateView, View
 from . import services
 from .forms import RegistrationForm
 
+EMAIL_FAILED_SESSION_KEY = "verification_email_failed"
+
 VERIFICATION_MESSAGES = {
     services.VerificationResult.VERIFIED: (
         True,
@@ -54,12 +56,18 @@ class RegisterView(FormView):
         except services.RegistrationError as exc:
             form.add_error(None, str(exc))
             return self.form_invalid(form)
-        services.send_verification_email(user, self.request)
+        sent = services.send_verification_email(user, self.request)
+        self.request.session[EMAIL_FAILED_SESSION_KEY] = not sent
         return super().form_valid(form)
 
 
 class RegistrationPendingView(TemplateView):
     template_name = "accounts/registration_pending.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["email_failed"] = self.request.session.pop(EMAIL_FAILED_SESSION_KEY, False)
+        return context
 
 
 class VerifyEmailView(TemplateView):
