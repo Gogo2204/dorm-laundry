@@ -19,11 +19,11 @@ from .models import ApprovedResident, User
 class AwaitingPINFilter(admin.SimpleListFilter):
     """Surfaces verified residents who still need a lockbox PIN (UC-02 step 6)."""
 
-    title = "lockbox PIN"
+    title = "ПИН код"
     parameter_name = "pin"
 
     def lookups(self, request, model_admin):
-        return [("awaiting", "Awaiting PIN"), ("assigned", "PIN assigned")]
+        return [("awaiting", "Чака ПИН код"), ("assigned", "Назначен ПИН код")]
 
     def queryset(self, request, queryset):
         from access_codes.models import LockboxPIN
@@ -80,9 +80,9 @@ class UserAdmin(DjangoUserAdmin):
 
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        ("Personal info", {"fields": ("first_name", "last_name")}),
+        ("Лични данни", {"fields": ("first_name", "last_name")}),
         (
-            "Permissions",
+            "Права",
             {
                 "fields": (
                     "is_active",
@@ -96,7 +96,7 @@ class UserAdmin(DjangoUserAdmin):
                 )
             },
         ),
-        ("Important dates", {"fields": ("last_login", "date_joined")}),
+        ("Важни дати", {"fields": ("last_login", "date_joined")}),
     )
     add_fieldsets = (
         (
@@ -135,17 +135,17 @@ class UserAdmin(DjangoUserAdmin):
                 return False
         return allowed
 
-    @admin.display(description="Lockbox PIN")
+    @admin.display(description="ПИН код")
     def pin_status(self, obj: User) -> str:
         from access_codes.services import user_assigned_pin
 
         if user_assigned_pin(obj) is not None:
-            return "Assigned"
+            return "Назначен"
         if obj.is_active and obj.email_verified and obj.deactivated_at is None:
-            return "Awaiting"
+            return "Чака"
         return "—"
 
-    @admin.action(description="Allocate lockbox PINs to selected users")
+    @admin.action(description="Назначи ПИН кодове на избраните потребители")
     def allocate_pins(self, request, queryset):
         from access_codes.services import allocate_pin_for_user, user_assigned_pin
 
@@ -165,24 +165,24 @@ class UserAdmin(DjangoUserAdmin):
         if allocated:
             self.message_user(
                 request,
-                f"Allocated {allocated} PIN(s); delivery emails are being sent.",
+                f"Назначени ПИН кодове: {allocated}; имейлите се изпращат.",
                 messages.SUCCESS,
             )
         if no_inventory:
             self.message_user(
                 request,
-                f"{no_inventory} eligible user(s) could not get a PIN: no AVAILABLE "
-                "PINs in the inventory.",
+                f"{no_inventory} потребител(и) не получиха ПИН код: няма свободни "
+                "ПИН кодове в наличност.",
                 messages.ERROR,
             )
         if skipped:
             self.message_user(
                 request,
-                f"{skipped} user(s) skipped (already assigned or not eligible).",
+                f"Пропуснати потребители: {skipped} (вече имат ПИН код или не са допустими).",
                 messages.WARNING,
             )
 
-    @admin.action(description="Reactivate selected users")
+    @admin.action(description="Активирай отново избраните потребители")
     def reactivate_users(self, request, queryset):
         reactivated = 0
         for user in queryset.filter(deactivated_at__isnull=False):
@@ -194,13 +194,13 @@ class UserAdmin(DjangoUserAdmin):
         if reactivated:
             self.message_user(
                 request,
-                f"Reactivated {reactivated} user(s). Cancelled reservations stay "
-                "cancelled and old PINs are not restored — use 'Allocate lockbox "
-                "PINs' to assign a fresh PIN.",
+                f"Активирани отново: {reactivated}. Отказаните резервации остават "
+                "отказани, а старите ПИН кодове не се възстановяват — използвайте "
+                "„Назначи ПИН кодове“, за да дадете нов ПИН код.",
                 messages.SUCCESS,
             )
 
-    @admin.action(description="Deactivate selected users")
+    @admin.action(description="Деактивирай избраните потребители")
     def deactivate_users(self, request, queryset):
         deactivated = 0
         for user in queryset:
@@ -210,15 +210,15 @@ class UserAdmin(DjangoUserAdmin):
             except ValidationError as exc:
                 self.message_user(request, f"{user.email}: {exc.messages[0]}", messages.ERROR)
         if deactivated:
-            self.message_user(request, f"Deactivated {deactivated} user(s).", messages.SUCCESS)
+            self.message_user(request, f"Деактивирани потребители: {deactivated}.", messages.SUCCESS)
 
 
 class ClaimedFilter(admin.SimpleListFilter):
-    title = "registration"
+    title = "регистрация"
     parameter_name = "claimed"
 
     def lookups(self, request, model_admin):
-        return [("yes", "Registered"), ("no", "Not registered")]
+        return [("yes", "Регистрирани"), ("no", "Нерегистрирани")]
 
     def queryset(self, request, queryset):
         if self.value() == "yes":
@@ -260,7 +260,7 @@ class ApprovedResidentAdmin(admin.ModelAdmin):
     autocomplete_fields = ["registered_user"]
     change_list_template = "admin/accounts/approvedresident/change_list.html"
 
-    @admin.display(boolean=True, description="Claimed")
+    @admin.display(boolean=True, description="Регистриран")
     def is_claimed(self, obj: ApprovedResident) -> bool:
         return obj.is_claimed
 
@@ -275,15 +275,15 @@ class ApprovedResidentAdmin(admin.ModelAdmin):
             if obj.registered_user is not None:
                 self.message_user(
                     request,
-                    f"{obj} is no longer eligible: the linked account was "
-                    "deactivated, future reservations cancelled, and any "
-                    "assigned PIN flagged for physical removal.",
+                    f"{obj} вече не е допустим: свързаният профил беше "
+                    "деактивиран, бъдещите резервации — отказани, а назначеният "
+                    "ПИН код е отбелязан за физическо премахване.",
                     messages.WARNING,
                 )
             return
         super().save_model(request, obj, form, change)
 
-    @admin.action(description="Mark ineligible (deactivates linked accounts)")
+    @admin.action(description="Отбележи като недопустими (деактивира свързаните профили)")
     def mark_ineligible(self, request, queryset):
         revoked = 0
         for entry in queryset.filter(is_eligible=True):
@@ -295,12 +295,12 @@ class ApprovedResidentAdmin(admin.ModelAdmin):
         if revoked:
             self.message_user(
                 request,
-                f"Marked {revoked} resident(s) ineligible. Linked accounts were "
-                "deactivated; check Lockbox PINs for codes awaiting physical removal.",
+                f"Отбелязани като недопустими: {revoked}. Свързаните профили бяха "
+                "деактивирани; проверете ПИН кодовете, чакащи физическо премахване.",
                 messages.SUCCESS,
             )
 
-    @admin.action(description="Mark eligible again (does not reactivate accounts)")
+    @admin.action(description="Върни допустимостта (не активира профилите)")
     def mark_eligible(self, request, queryset):
         restored = 0
         for entry in queryset.filter(is_eligible=False):
@@ -309,8 +309,9 @@ class ApprovedResidentAdmin(admin.ModelAdmin):
         if restored:
             self.message_user(
                 request,
-                f"Marked {restored} resident(s) eligible. Linked accounts remain "
-                "deactivated until explicitly reactivated on the Users page.",
+                f"Върната допустимост: {restored}. Свързаните профили остават "
+                "деактивирани, докато не бъдат изрично активирани от страницата "
+                "Потребители.",
                 messages.SUCCESS,
             )
 
@@ -332,17 +333,17 @@ class ApprovedResidentAdmin(admin.ModelAdmin):
 
     def import_csv_view(self, request):
         if not self.has_add_permission(request):
-            self.message_user(request, "You may not add approved residents.", messages.ERROR)
+            self.message_user(request, "Нямате право да добавяте одобрени живущи.", messages.ERROR)
             return redirect("admin:accounts_approvedresident_changelist")
 
         form = ApprovedResidentCSVForm(request.POST or None, request.FILES or None)
         if request.method == "POST" and form.is_valid():
             created, skipped, errors = self._import_csv(form.cleaned_data["csv_file"])
             if created:
-                self.message_user(request, f"Imported {created} approved resident(s).", messages.SUCCESS)
+                self.message_user(request, f"Импортирани одобрени живущи: {created}.", messages.SUCCESS)
             if skipped:
                 self.message_user(
-                    request, f"Skipped {skipped} duplicate name(s).", messages.WARNING
+                    request, f"Пропуснати дублирани имена: {skipped}.", messages.WARNING
                 )
             for error in errors:
                 self.message_user(request, error, messages.ERROR)
@@ -351,7 +352,7 @@ class ApprovedResidentAdmin(admin.ModelAdmin):
         context = {
             **self.admin_site.each_context(request),
             "form": form,
-            "title": "Import approved residents from CSV",
+            "title": "Импортиране на одобрени живущи от CSV",
             "opts": self.model._meta,
             "back_url": reverse("admin:accounts_approvedresident_changelist"),
         }
@@ -364,7 +365,7 @@ class ApprovedResidentAdmin(admin.ModelAdmin):
         try:
             text = uploaded_file.read().decode("utf-8-sig")
         except UnicodeDecodeError:
-            return 0, 0, ["The file is not valid UTF-8 text."]
+            return 0, 0, ["Файлът не е валиден UTF-8 текст."]
 
         for line_number, row in enumerate(csv.reader(io.StringIO(text)), start=1):
             if not row or not any(cell.strip() for cell in row):
@@ -375,7 +376,7 @@ class ApprovedResidentAdmin(admin.ModelAdmin):
             ]:
                 continue
             if len(row) < 2 or not row[0].strip() or not row[1].strip():
-                errors.append(f"Line {line_number}: expected two columns (first name, last name).")
+                errors.append(f"Ред {line_number}: очакват се две колони (име, фамилия).")
                 continue
             try:
                 with transaction.atomic():

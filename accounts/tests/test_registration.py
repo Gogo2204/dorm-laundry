@@ -41,7 +41,7 @@ class RegistrationTests(TestCase):
         self.assertEqual(self.entry.registered_user, user)
 
         self.assertEqual(len(mail.outbox), 1)
-        self.assertIn("verify", mail.outbox[0].body.lower())
+        self.assertIn("/accounts/verify/", mail.outbox[0].body)
         self.assertEqual(mail.outbox[0].to, ["ana@example.com"])
 
     def test_registration_grants_no_admin_privileges(self):
@@ -52,7 +52,7 @@ class RegistrationTests(TestCase):
 
     def test_unapproved_name_rejected(self):
         response = self.client.post(self.url, form_data(first_name="Boris"))
-        self.assertContains(response, "approved residents")
+        self.assertContains(response, "одобрени живущи")
         self.assertFalse(User.objects.filter(email="ana@example.com").exists())
 
     def test_name_matching_is_normalized(self):
@@ -68,20 +68,20 @@ class RegistrationTests(TestCase):
     def test_claimed_entry_cannot_be_claimed_twice(self):
         self.client.post(self.url, form_data())
         response = self.client.post(self.url, form_data(email="other@example.com"))
-        self.assertContains(response, "approved residents")
+        self.assertContains(response, "одобрени живущи")
         self.assertFalse(User.objects.filter(email="other@example.com").exists())
 
     def test_ineligible_entry_rejected(self):
         self.entry.is_eligible = False
         self.entry.save()
         response = self.client.post(self.url, form_data())
-        self.assertContains(response, "approved residents")
+        self.assertContains(response, "одобрени живущи")
         self.assertEqual(User.objects.count(), 0)
 
     def test_duplicate_email_rejected(self):
         User.objects.create_user(email="ana@example.com", password="whatever-pass-1")
         response = self.client.post(self.url, form_data())
-        self.assertContains(response, "already exists")
+        self.assertContains(response, "съществува профил")
         self.assertIsNone(
             ApprovedResident.objects.get(pk=self.entry.pk).registered_user
         )
@@ -89,7 +89,7 @@ class RegistrationTests(TestCase):
     def test_duplicate_email_case_insensitive(self):
         User.objects.create_user(email="ana@example.com", password="whatever-pass-1")
         response = self.client.post(self.url, form_data(email="ANA@example.com"))
-        self.assertContains(response, "already exists")
+        self.assertContains(response, "съществува профил")
 
     def test_weak_password_rejected(self):
         response = self.client.post(

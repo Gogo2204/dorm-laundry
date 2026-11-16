@@ -19,16 +19,16 @@ class LockboxPIN(models.Model):
     """
 
     class Status(models.TextChoices):
-        UNPROGRAMMED = "UNPROGRAMMED", "Unprogrammed (not yet in lockbox)"
-        AVAILABLE = "AVAILABLE", "Available"
-        ASSIGNED = "ASSIGNED", "Assigned"
-        REVOKE_PENDING = "REVOKE_PENDING", "Revoke pending (remove from lockbox!)"
-        REVOKED = "REVOKED", "Revoked (physically removed)"
+        UNPROGRAMMED = "UNPROGRAMMED", "Непрограмиран (още не е в кутията)"
+        AVAILABLE = "AVAILABLE", "Свободен"
+        ASSIGNED = "ASSIGNED", "Назначен"
+        REVOKE_PENDING = "REVOKE_PENDING", "Чака премахване (изтрийте го от кутията!)"
+        REVOKED = "REVOKED", "Премахнат (физически изтрит)"
 
     encrypted_pin = models.TextField(editable=False)
     pin_fingerprint = models.CharField(max_length=64, unique=True, editable=False)
     status = models.CharField(
-        max_length=20, choices=Status.choices, default=Status.UNPROGRAMMED
+        "статус", max_length=20, choices=Status.choices, default=Status.UNPROGRAMMED
     )
     assigned_user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -36,14 +36,16 @@ class LockboxPIN(models.Model):
         blank=True,
         on_delete=models.PROTECT,
         related_name="lockbox_pins",
+        verbose_name="назначен на",
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    assigned_at = models.DateTimeField(null=True, blank=True)
-    revoke_requested_at = models.DateTimeField(null=True, blank=True)
-    revoke_confirmed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField("добавен на", auto_now_add=True)
+    assigned_at = models.DateTimeField("назначен на дата", null=True, blank=True)
+    revoke_requested_at = models.DateTimeField("премахване заявено на", null=True, blank=True)
+    revoke_confirmed_at = models.DateTimeField("премахване потвърдено на", null=True, blank=True)
 
     class Meta:
-        verbose_name = "Lockbox PIN"
+        verbose_name = "ПИН код за кутията с ключ"
+        verbose_name_plural = "ПИН кодове за кутията с ключ"
         ordering = ["pk"]
         constraints = [
             # A resident can hold at most one currently-assigned PIN; older
@@ -52,7 +54,7 @@ class LockboxPIN(models.Model):
                 fields=["assigned_user"],
                 condition=models.Q(status="ASSIGNED"),
                 name="unique_assigned_pin_per_user",
-                violation_error_message="This resident already has an assigned PIN.",
+                violation_error_message="Този живущ вече има назначен ПИН код.",
             ),
         ]
 
@@ -66,10 +68,10 @@ class PINDelivery(models.Model):
     a delivery request and retries never re-allocate PINs."""
 
     class Status(models.TextChoices):
-        PENDING = "PENDING", "Pending"
-        SENT = "SENT", "Sent"
-        FAILED = "FAILED", "Failed"
-        CANCELLED = "CANCELLED", "Cancelled"
+        PENDING = "PENDING", "Чакащо"
+        SENT = "SENT", "Изпратено"
+        FAILED = "FAILED", "Неуспешно"
+        CANCELLED = "CANCELLED", "Отменено"
 
     pin = models.ForeignKey(LockboxPIN, on_delete=models.PROTECT, related_name="deliveries")
     user = models.ForeignKey(
@@ -83,8 +85,8 @@ class PINDelivery(models.Model):
     last_error = models.CharField(max_length=200, blank=True)
 
     class Meta:
-        verbose_name = "PIN delivery"
-        verbose_name_plural = "PIN deliveries"
+        verbose_name = "изпращане на ПИН код"
+        verbose_name_plural = "изпращания на ПИН кодове"
         ordering = ["-created_at"]
 
     def __str__(self) -> str:
@@ -96,15 +98,15 @@ class PINAuditLog(models.Model):
     plaintext PINs or key material."""
 
     class Action(models.TextChoices):
-        IMPORTED = "IMPORTED", "PIN imported"
-        PROGRAMMED = "PROGRAMMED", "Programming confirmed"
-        ASSIGNED = "ASSIGNED", "Assigned to resident"
-        DELIVERY_SENT = "DELIVERY_SENT", "Delivery email sent"
-        DELIVERY_FAILED = "DELIVERY_FAILED", "Delivery email failed"
-        DELIVERY_CANCELLED = "DELIVERY_CANCELLED", "Delivery cancelled"
-        DELIVERY_RETRY = "DELIVERY_RETRY", "Delivery retry requested"
-        REVOKE_REQUESTED = "REVOKE_REQUESTED", "Physical revocation requested"
-        REVOKE_CONFIRMED = "REVOKE_CONFIRMED", "Physical removal confirmed"
+        IMPORTED = "IMPORTED", "ПИН кодът е импортиран"
+        PROGRAMMED = "PROGRAMMED", "Програмирането е потвърдено"
+        ASSIGNED = "ASSIGNED", "Назначен на живущ"
+        DELIVERY_SENT = "DELIVERY_SENT", "Имейлът е изпратен"
+        DELIVERY_FAILED = "DELIVERY_FAILED", "Имейлът е неуспешен"
+        DELIVERY_CANCELLED = "DELIVERY_CANCELLED", "Изпращането е отменено"
+        DELIVERY_RETRY = "DELIVERY_RETRY", "Заявен повторен опит"
+        REVOKE_REQUESTED = "REVOKE_REQUESTED", "Заявено физическо премахване"
+        REVOKE_CONFIRMED = "REVOKE_CONFIRMED", "Потвърдено физическо премахване"
 
     pin = models.ForeignKey(LockboxPIN, on_delete=models.PROTECT, related_name="audit_log")
     action = models.CharField(max_length=20, choices=Action.choices)
@@ -114,7 +116,7 @@ class PINAuditLog(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="pin_audit_entries",
-        help_text="Administrator responsible; empty for automatic system actions.",
+        help_text="Отговорният администратор; празно при автоматични системни действия.",
     )
     target_user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -127,8 +129,8 @@ class PINAuditLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = "PIN audit entry"
-        verbose_name_plural = "PIN audit entries"
+        verbose_name = "одитен запис за ПИН"
+        verbose_name_plural = "одитни записи за ПИН"
         ordering = ["-created_at"]
 
     def __str__(self) -> str:

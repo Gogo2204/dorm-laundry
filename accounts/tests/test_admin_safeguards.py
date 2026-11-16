@@ -105,7 +105,7 @@ class AdminSafeguardAdminSiteTests(TestCase):
             },
             follow=True,
         )
-        self.assertContains(response, "last active administrator")
+        self.assertContains(response, "последният активен администратор")
         self.admin.refresh_from_db()
         resident.refresh_from_db()
         self.assertTrue(self.admin.is_active)

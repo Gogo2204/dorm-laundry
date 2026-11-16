@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Email verification — Dorm Laundry{% endblock %}
+{% block title %}Потвърждение на имейл — Пералня{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
@@ -8,16 +8,16 @@
         <div class="card shadow-sm">
             <div class="card-body text-center py-5">
                 <h1 class="h4 mb-3">
-                    {% if success %}Email confirmed{% else %}Verification failed{% endif %}
+                    {% if success %}Имейлът е потвърден{% else %}Неуспешно потвърждение{% endif %}
                 </h1>
                 <p class="text-muted">{{ message }}</p>
                 {% if pin_note %}
                     <p class="text-muted small">{{ pin_note }}</p>
                 {% endif %}
                 {% if success %}
-                    <a class="btn btn-primary" href="{% url 'login' %}">Log in</a>
+                    <a class="btn btn-primary" href="{% url 'login' %}">Вход</a>
                 {% else %}
-                    <a class="btn btn-outline-primary" href="{% url 'register' %}">Back to registration</a>
+                    <a class="btn btn-outline-primary" href="{% url 'register' %}">Към регистрацията</a>
                 {% endif %}
             </div>
         </div>

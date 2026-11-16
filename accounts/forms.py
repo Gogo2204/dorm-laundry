@@ -18,23 +18,23 @@ class BootstrapFormMixin:
 
 
 class RegistrationForm(BootstrapFormMixin, forms.Form):
-    first_name = forms.CharField(label="First name", max_length=150)
-    last_name = forms.CharField(label="Last name", max_length=150)
-    email = forms.EmailField(label="Email address")
-    password1 = forms.CharField(label="Password", widget=forms.PasswordInput)
-    password2 = forms.CharField(label="Confirm password", widget=forms.PasswordInput)
+    first_name = forms.CharField(label="Име", max_length=150)
+    last_name = forms.CharField(label="Фамилия", max_length=150)
+    email = forms.EmailField(label="Имейл адрес")
+    password1 = forms.CharField(label="Парола", widget=forms.PasswordInput)
+    password2 = forms.CharField(label="Потвърдете паролата", widget=forms.PasswordInput)
 
     def clean_email(self) -> str:
         email = self.cleaned_data["email"].lower()
         if get_user_model().objects.filter(email__iexact=email).exists():
-            raise ValidationError("An account with this email address already exists.")
+            raise ValidationError("Вече съществува профил с този имейл адрес.")
         return email
 
     def clean(self):
         cleaned = super().clean()
         password1, password2 = cleaned.get("password1"), cleaned.get("password2")
         if password1 and password2 and password1 != password2:
-            self.add_error("password2", "The two password fields do not match.")
+            self.add_error("password2", "Двете пароли не съвпадат.")
         elif password1:
             probe = get_user_model()(
                 email=cleaned.get("email", ""),
@@ -68,7 +68,7 @@ class ApprovedResidentCSVForm(forms.Form):
     """Upload form for the Django Admin CSV import (stdlib csv only)."""
 
     csv_file = forms.FileField(
-        label="CSV file",
-        help_text='Two columns: first name, last name. A header row "first_name,last_name" is optional.',
+        label="CSV файл",
+        help_text='Две колони: име, фамилия. Заглавен ред "first_name,last_name" е незадължителен.',
         widget=forms.ClearableFileInput(attrs={"accept": ".csv"}),
     )

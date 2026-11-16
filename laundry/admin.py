@@ -8,11 +8,11 @@ from .models import MachineSet, Reservation
 class TimingFilter(admin.SimpleListFilter):
     """Quickly narrow the list to upcoming (still relevant) reservations."""
 
-    title = "timing"
+    title = "период"
     parameter_name = "timing"
 
     def lookups(self, request, model_admin):
-        return [("upcoming", "Upcoming (active, today or later)"), ("past", "Past dates")]
+        return [("upcoming", "Предстоящи (активни, от днес нататък)"), ("past", "Минали дати")]
 
     def queryset(self, request, queryset):
         today = timezone.localdate()
@@ -58,7 +58,7 @@ class ReservationAdmin(admin.ModelAdmin):
     date_hierarchy = "booking_date"
     actions = ["cancel_reservations"]
 
-    @admin.display(description="Resident", ordering="user__last_name")
+    @admin.display(description="Живущ", ordering="user__last_name")
     def resident(self, obj: Reservation) -> str:
         return f"{obj.user.first_name} {obj.user.last_name}"
 
@@ -73,7 +73,7 @@ class ReservationAdmin(admin.ModelAdmin):
         # Reservations are history; cancel instead of deleting.
         return False
 
-    @admin.action(description="Cancel selected reservations")
+    @admin.action(description="Откажи избраните резервации")
     def cancel_reservations(self, request, queryset):
         cancelled = 0
         for reservation in queryset:
@@ -84,9 +84,9 @@ class ReservationAdmin(admin.ModelAdmin):
                 cancelled += 1
             except services.BookingError as exc:
                 self.message_user(
-                    request, f"Reservation {reservation.pk}: {exc}", messages.ERROR
+                    request, f"Резервация {reservation.pk}: {exc}", messages.ERROR
                 )
         if cancelled:
             self.message_user(
-                request, f"Cancelled {cancelled} reservation(s).", messages.SUCCESS
+                request, f"Отказани резервации: {cancelled}.", messages.SUCCESS
             )

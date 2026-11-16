@@ -139,7 +139,10 @@ PIN_FORMAT_REGEX = os.environ.get("PIN_FORMAT_REGEX", r"^\d{4,8}$")
 
 # Internationalization
 
-LANGUAGE_CODE = "en-us"
+# Bulgarian is the only user-facing language (no language selector); Django's
+# built-in "bg" catalog localises the admin, auth errors, validators, and
+# date/month names. Custom strings are written directly in Bulgarian.
+LANGUAGE_CODE = "bg"
 
 TIME_ZONE = os.environ.get("DJANGO_TIME_ZONE", "Europe/Sofia")
 

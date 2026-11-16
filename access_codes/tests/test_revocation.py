@@ -115,7 +115,7 @@ class RevocationTests(TestCase):
             changelist,
             {"action": "confirm_removal_action", "_selected_action": [str(pin.pk)]},
         )
-        self.assertContains(response, "personally deleted")
+        self.assertContains(response, "лично сте изтрили")
         pin.refresh_from_db()
         self.assertEqual(pin.status, LockboxPIN.Status.REVOKE_PENDING)
         self.client.post(

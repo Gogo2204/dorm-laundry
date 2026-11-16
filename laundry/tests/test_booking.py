@@ -52,7 +52,7 @@ class BookingRuleTests(TestCase):
         with freeze_now():
             self.book(booking_date=THU, slot_number=1)
             self.book(booking_date=SAT, slot_number=1)
-            with self.assertRaisesMessage(services.BookingError, "limit"):
+            with self.assertRaisesMessage(services.BookingError, "лимита"):
                 self.book(booking_date=FRI, slot_number=3)
 
     def test_weekly_limit_is_per_week(self):
@@ -67,13 +67,13 @@ class BookingRuleTests(TestCase):
     def test_consecutive_slots_same_day_rejected(self):
         with freeze_now():
             self.book(booking_date=FRI, slot_number=1)
-            with self.assertRaisesMessage(services.BookingError, "consecutive"):
+            with self.assertRaisesMessage(services.BookingError, "последователни"):
                 self.book(booking_date=FRI, slot_number=2, machine_set=self.set2)
 
     def test_slots_4_and_5_are_consecutive(self):
         with freeze_now():
             self.book(booking_date=FRI, slot_number=4)
-            with self.assertRaisesMessage(services.BookingError, "consecutive"):
+            with self.assertRaisesMessage(services.BookingError, "последователни"):
                 self.book(booking_date=FRI, slot_number=5)
 
     def test_nonconsecutive_slots_same_day_allowed(self):
@@ -93,21 +93,21 @@ class BookingRuleTests(TestCase):
     def test_same_slot_on_two_machines_rejected(self):
         with freeze_now():
             self.book(booking_date=FRI, slot_number=1, machine_set=self.set1)
-            with self.assertRaisesMessage(services.BookingError, "another machine set"):
+            with self.assertRaisesMessage(services.BookingError, "на друг комплект"):
                 self.book(booking_date=FRI, slot_number=1, machine_set=self.set2)
 
     def test_machine_double_booking_rejected(self):
         boris = make_resident("boris@example.com", "Boris", "Iliev")
         with freeze_now():
             self.book(booking_date=FRI, slot_number=1)
-            with self.assertRaisesMessage(services.BookingError, "already booked"):
+            with self.assertRaisesMessage(services.BookingError, "вече е зает"):
                 self.book(user=boris, booking_date=FRI, slot_number=1)
 
     def test_booking_horizon(self):
         with freeze_now():
             # Both current-week and next-week edges are fine.
             self.book(booking_date=NEXT_SUN, slot_number=1)
-            with self.assertRaisesMessage(services.BookingError, "current or next week"):
+            with self.assertRaisesMessage(services.BookingError, "текущата или следващата седмица"):
                 self.book(booking_date=AFTER_HORIZON, slot_number=1, machine_set=self.set2)
 
     def test_past_date_rejected(self):
@@ -117,7 +117,7 @@ class BookingRuleTests(TestCase):
     def test_started_slot_today_rejected(self):
         # Frozen now is Wednesday 12:00: slots 1 and 2 have started, slot 3 not.
         with freeze_now():
-            with self.assertRaisesMessage(services.BookingError, "already started"):
+            with self.assertRaisesMessage(services.BookingError, "вече е започнал"):
                 self.book(booking_date=WED, slot_number=2)
             self.book(booking_date=WED, slot_number=3)
 
@@ -125,27 +125,27 @@ class BookingRuleTests(TestCase):
         at_slot_3_start = services.slot_start(WED, 3)
         with (
             freeze_now(at_slot_3_start),
-            self.assertRaisesMessage(services.BookingError, "already started"),
+            self.assertRaisesMessage(services.BookingError, "вече е започнал"),
         ):
             self.book(booking_date=WED, slot_number=3)
 
     def test_inactive_user_cannot_book(self):
         self.ana.is_active = False
         self.ana.save()
-        with freeze_now(), self.assertRaisesMessage(services.BookingError, "not allowed"):
+        with freeze_now(), self.assertRaisesMessage(services.BookingError, "няма право"):
             self.book()
 
     def test_deactivated_user_cannot_book(self):
         self.ana.is_active = False
         self.ana.deactivated_at = timezone.now()
         self.ana.save()
-        with freeze_now(), self.assertRaisesMessage(services.BookingError, "not allowed"):
+        with freeze_now(), self.assertRaisesMessage(services.BookingError, "няма право"):
             self.book()
 
     def test_inactive_machine_set_cannot_be_booked(self):
         self.set1.is_active = False
         self.set1.save()
-        with freeze_now(), self.assertRaisesMessage(services.BookingError, "not available"):
+        with freeze_now(), self.assertRaisesMessage(services.BookingError, "не е достъпен"):
             self.book()
 
     def test_invalid_slot_number_rejected(self):
@@ -156,7 +156,7 @@ class BookingRuleTests(TestCase):
 
     def test_exactly_three_machine_sets_are_seeded(self):
         names = list(MachineSet.objects.values_list("name", flat=True))
-        self.assertEqual(names, ["Set 1", "Set 2", "Set 3"])
+        self.assertEqual(names, ["Комплект 1", "Комплект 2", "Комплект 3"])
 
 
 class QuotaAfterCancellationTests(TestCase):
@@ -192,7 +192,7 @@ class QuotaAfterCancellationTests(TestCase):
                 user=self.ana, machine_set=self.set1, booking_date=SAT, slot_number=1
             )
             services.cancel_reservation(reservation=started, cancelled_by=self.ana)
-            with self.assertRaisesMessage(services.BookingError, "limit"):
+            with self.assertRaisesMessage(services.BookingError, "лимита"):
                 services.book_slot(
                     user=self.ana, machine_set=self.set1, booking_date=FRI, slot_number=3
                 )

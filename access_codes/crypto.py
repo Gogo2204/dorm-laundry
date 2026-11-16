@@ -76,5 +76,5 @@ def pin_fingerprint(pin: str) -> str:
 def validate_pin_format(pin: str) -> None:
     if not re.fullmatch(settings.PIN_FORMAT_REGEX, pin):
         raise ValidationError(
-            "PIN does not match the accepted format (default: 4–8 digits)."
+            "ПИН кодът не отговаря на приетия формат (по подразбиране: 4–8 цифри)."
         )

@@ -39,7 +39,7 @@ class InventoryServiceTests(TestCase):
         self.assertEqual(result.created, 3)
         self.assertEqual(result.duplicates, 1)
         self.assertEqual(len(result.errors), 1)
-        self.assertIn("Line 5", result.errors[0])
+        self.assertIn("Ред 5", result.errors[0])
         # Errors reference line numbers, never values.
         self.assertNotIn("bad-pin", result.errors[0])
 
@@ -91,7 +91,7 @@ class InventoryAdminTests(TestCase):
             reverse("admin:access_codes_lockboxpin_add"), {"pin_value": "123456"}
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "already in the inventory")
+        self.assertContains(response, "вече е в наличността")
         self.assertNotContains(response, 'value="123456"')
 
     def test_csv_import_view(self):
@@ -100,16 +100,16 @@ class InventoryAdminTests(TestCase):
             {"csv_file": SimpleUploadedFile("pins.csv", b"pin\n111111\n222222\n111111\nxx\n")},
             follow=True,
         )
-        self.assertContains(response, "Imported 2")
-        self.assertContains(response, "Skipped 1 duplicate")
-        self.assertContains(response, "invalid PIN format")
+        self.assertContains(response, "Импортирани ПИН кодове: 2")
+        self.assertContains(response, "Пропуснати дублирани ПИН кодове: 1")
+        self.assertContains(response, "невалиден формат")
         self.assertEqual(LockboxPIN.objects.count(), 2)
 
     def test_changelist_shows_counts_and_no_pin_material(self):
         pin = add_available_pin("987654")
         response = self.client.get(reverse("admin:access_codes_lockboxpin_changelist"))
-        self.assertContains(response, "Inventory:")
-        self.assertContains(response, "Available: <strong>1</strong>")
+        self.assertContains(response, "Наличност:")
+        self.assertContains(response, "Свободен: <strong>1</strong>")
         self.assertNotContains(response, "987654")
         self.assertNotContains(response, pin.encrypted_pin)
 
@@ -138,7 +138,7 @@ class InventoryAdminTests(TestCase):
             changelist,
             {"action": "confirm_programmed_action", "_selected_action": [str(pin.pk)]},
         )
-        self.assertContains(response, "Only confirm PINs you have personally programmed")
+        self.assertContains(response, "лично сте програмирали")
         pin.refresh_from_db()
         self.assertEqual(pin.status, LockboxPIN.Status.UNPROGRAMMED)
         # Second POST with the confirmation flag applies the transition.
@@ -151,7 +151,7 @@ class InventoryAdminTests(TestCase):
             },
             follow=True,
         )
-        self.assertContains(response, "marked AVAILABLE")
+        self.assertContains(response, "отбелязани като „Свободни“")
         pin.refresh_from_db()
         self.assertEqual(pin.status, LockboxPIN.Status.AVAILABLE)
 

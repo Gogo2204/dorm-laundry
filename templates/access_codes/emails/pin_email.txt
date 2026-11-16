@@ -1,14 +1,14 @@
-Hello {{ user.first_name }},
+Здравейте, {{ user.first_name }},
 
-Your personal PIN for the shared laundry lockbox is:
+Вашият личен ПИН код за кутията с ключа за пералното помещение е:
 
     {{ pin }}
 
-Use it on the lockbox keypad to collect the laundry room key during your
-reserved slot.
+Въведете го на клавиатурата на кутията, за да вземете ключа за пералното
+помещение по време на резервирания от вас интервал.
 
-This PIN is personal: do not share it with anyone or write it somewhere
-public. You can also view it at any time on your account page after
-logging in.
+Този ПИН код е личен: не го споделяйте с никого и не го записвайте на
+публично място. Можете да го видите по всяко време и на страницата на
+профила си след вход.
 
-— Dorm Laundry
+— Пералня на общежитието

@@ -16,7 +16,7 @@ class PageSmokeTests(TestCase):
         self.client.force_login(make_resident("root@example.com"))
         response = self.client.get("/", follow=True)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Laundry schedule")
+        self.assertContains(response, "График на пералнята")
 
     def test_admin_requires_login(self):
         response = self.client.get("/admin/")

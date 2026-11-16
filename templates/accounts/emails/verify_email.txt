@@ -1,12 +1,12 @@
-Hello {{ user.first_name }},
+Здравейте, {{ user.first_name }},
 
-Thank you for registering with Dorm Laundry.
+Благодарим за регистрацията в Пералнята на общежитието.
 
-Please confirm your email address by opening this link:
+Моля, потвърдете имейл адреса си, като отворите този линк:
 
 {{ verification_url }}
 
-The link expires after {{ timeout_hours }} hours. If you did not register,
-you can ignore this email.
+Линкът изтича след {{ timeout_hours }} часа. Ако не сте се регистрирали,
+можете да пренебрегнете този имейл.
 
-— Dorm Laundry
+— Пералня на общежитието

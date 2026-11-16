@@ -127,6 +127,34 @@ All sensitive PIN operations (import, programming, assignment, delivery
 attempts, retries, revocation) are recorded in the *PIN audit entries* log,
 which never contains PIN values.
 
+## Bulgarian-only interface
+
+The entire application — resident pages, forms, validation messages, emails,
+and Django Admin — is in Bulgarian, and Bulgarian is the only language (no
+selector, no per-user preference).
+
+- `LANGUAGE_CODE = "bg"` activates Django's built-in Bulgarian catalog for
+  the admin interface, authentication errors, password validators, and
+  date/month names. `TIME_ZONE` stays `Europe/Sofia`; scheduling behaviour is
+  unchanged.
+- Application-specific text is written **directly in Bulgarian** in
+  templates, forms, services, and model metadata — there are no project
+  translation catalogs (`.po`/`.mo`) to maintain. To change wording, edit
+  the string in place; an automated test
+  (`accounts/tests/test_localization.py`) fails if English UI text reappears
+  in the custom templates.
+- The three machine sets are named „Комплект 1/2/3“ (renamed by a data
+  migration; new databases are seeded in English by the original migration
+  and renamed immediately after).
+- **Cyrillic emails:** Django sends UTF-8 email by default. Locally, trigger
+  a registration and check the `runserver` console — the verification, PIN,
+  and password-reset emails must display Cyrillic correctly (they are
+  rendered from the UTF-8 templates under `templates/*/emails/`).
+- **Overnight slot label:** the fifth slot displays only „22:00–02:00“ —
+  the "+1 day" marker was removed. The slot still *ends* at 02:00 on the
+  following date and belongs to the date it starts; a regression test pins
+  both facts (`test_slot_5_still_ends_at_2_am_next_day`).
+
 ## Administration procedures
 
 ### Deactivating a resident

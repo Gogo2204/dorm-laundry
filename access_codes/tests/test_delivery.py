@@ -33,7 +33,7 @@ class DeliveryTests(TestCase):
         pin_mail = mail.outbox[0]
         self.assertEqual(pin_mail.to, [user.email])
         self.assertIn("123456", pin_mail.body)
-        self.assertIn("personal", pin_mail.body)
+        self.assertIn("личен", pin_mail.body)
         self.assertTrue(
             PINAuditLog.objects.filter(
                 action=PINAuditLog.Action.DELIVERY_SENT, target_user=user
@@ -152,7 +152,7 @@ class DeliveryTests(TestCase):
             {"action": "retry_action", "_selected_action": [str(delivery.pk)]},
             follow=True,
         )
-        self.assertContains(response, "Sent 1 PIN email(s).")
+        self.assertContains(response, "Изпратени имейли с ПИН код: 1.")
         delivery.refresh_from_db()
         self.assertEqual(delivery.status, PINDelivery.Status.SENT)
         self.assertEqual(delivery.attempts, 2)

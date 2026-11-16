@@ -100,11 +100,11 @@ class VerifyEmailViewTests(TestCase):
         user = make_pending_user()
         url = reverse("verify_email", args=[services.make_verification_token(user)])
         response = self.client.get(url)
-        self.assertContains(response, "Email confirmed")
+        self.assertContains(response, "Имейлът е потвърден")
         user.refresh_from_db()
         self.assertTrue(user.is_active)
 
     def test_invalid_token_via_view_is_graceful(self):
         response = self.client.get(reverse("verify_email", args=["not-a-real-token"]))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "not valid")
+        self.assertContains(response, "не е валиден")

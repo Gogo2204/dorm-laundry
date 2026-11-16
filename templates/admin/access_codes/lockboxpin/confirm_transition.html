@@ -3,7 +3,7 @@
 {% block content %}
 <h1>{{ title }}</h1>
 <p class="errornote">{{ warning }}</p>
-<p>{{ eligible|length }} PIN(s) will be updated{% if skipped %}; {{ skipped }} selected PIN(s) are not in the required state and will be skipped{% endif %}:</p>
+<p>Ще бъдат обновени {{ eligible|length }} ПИН код(а){% if skipped %}; {{ skipped }} от избраните не са в необходимото състояние и ще бъдат пропуснати{% endif %}:</p>
 <ul>
     {% for pin in eligible %}
         <li>{{ pin }}{% if pin.assigned_user %} — {{ pin.assigned_user.first_name }} {{ pin.assigned_user.last_name }}{% endif %}</li>
@@ -16,7 +16,7 @@
     {% endfor %}
     <input type="hidden" name="action" value="{{ action_name }}">
     <input type="hidden" name="transition_confirmed" value="1">
-    <input type="submit" class="default" value="Yes, I confirm">
-    <a class="button" href="{% url 'admin:access_codes_lockboxpin_changelist' %}">Cancel</a>
+    <input type="submit" class="default" value="Да, потвърждавам">
+    <a class="button" href="{% url 'admin:access_codes_lockboxpin_changelist' %}">Отказ</a>
 </form>
 {% endblock %}
