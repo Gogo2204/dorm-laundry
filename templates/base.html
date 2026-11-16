@@ -1,10 +1,10 @@
 {% load static %}
 <!doctype html>
-<html lang="en">
+<html lang="bg">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Dorm Laundry{% endblock %}</title>
+    <title>{% block title %}Пералня на общежитието{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
           rel="stylesheet"
           integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
@@ -14,30 +14,30 @@
 <body class="d-flex flex-column min-vh-100 bg-light">
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'schedule' %}">Dorm Laundry</a>
+            <a class="navbar-brand" href="{% url 'schedule' %}">Пералня</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
                     data-bs-target="#main-nav" aria-controls="main-nav"
-                    aria-expanded="false" aria-label="Toggle navigation">
+                    aria-expanded="false" aria-label="Превключване на навигацията">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="main-nav">
                 <ul class="navbar-nav ms-auto align-items-lg-center">
                     {% if user.is_authenticated %}
-                        <li class="nav-item"><a class="nav-link" href="{% url 'schedule' %}">Schedule</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'my_reservations' %}">My Reservations</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'account' %}">My Account</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'schedule' %}">График</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'my_reservations' %}">Моите резервации</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'account' %}">Моят профил</a></li>
                         {% if user.is_staff %}
-                            <li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}">Admin</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}">Администрация</a></li>
                         {% endif %}
                         <li class="nav-item">
                             <form method="post" action="{% url 'logout' %}" class="d-inline">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-link nav-link">Logout</button>
+                                <button type="submit" class="btn btn-link nav-link">Изход</button>
                             </form>
                         </li>
                     {% else %}
-                        <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Login</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'register' %}">Register</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Вход</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'register' %}">Регистрация</a></li>
                     {% endif %}
                 </ul>
             </div>
@@ -49,7 +49,7 @@
             {% for message in messages %}
                 <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} alert-dismissible fade show" role="alert">
                     {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Затвори"></button>
                 </div>
             {% endfor %}
         {% endif %}
@@ -57,7 +57,7 @@
     </main>
 
     <footer class="py-3 text-center text-muted small">
-        Dorm Laundry
+        Пералня на общежитието
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"

@@ -15,8 +15,8 @@ class ConstraintTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.set1 = MachineSet.objects.get(name="Set 1")
-        cls.set2 = MachineSet.objects.get(name="Set 2")
+        cls.set1 = MachineSet.objects.get(name="Комплект 1")
+        cls.set2 = MachineSet.objects.get(name="Комплект 2")
         cls.ana = make_resident("ana@example.com")
         cls.boris = make_resident("boris@example.com", "Boris", "Iliev")
 
@@ -61,7 +61,7 @@ class ConstraintTests(TestCase):
 class RaceSimulationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.set1 = MachineSet.objects.get(name="Set 1")
+        cls.set1 = MachineSet.objects.get(name="Комплект 1")
         cls.ana = make_resident("ana@example.com")
 
     def test_lost_race_is_translated_to_a_friendly_error(self):
@@ -69,7 +69,7 @@ class RaceSimulationTests(TestCase):
         INSERT, the unique constraint fires and the user gets a clear error."""
         with freeze_now(), mock.patch.object(
             services.Reservation.objects, "create", side_effect=IntegrityError
-        ), self.assertRaisesMessage(services.BookingError, "just taken"):
+        ), self.assertRaisesMessage(services.BookingError, "току-що беше зает"):
             services.book_slot(
                 user=self.ana,
                 machine_set=self.set1,

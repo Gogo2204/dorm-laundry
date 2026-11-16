@@ -22,7 +22,7 @@ class RevealPINTests(TestCase):
         self.client.force_login(self.user)
         response = self.client.get(reverse("account"))
         self.assertContains(response, "••••••")
-        self.assertContains(response, "Reveal PIN")
+        self.assertContains(response, "Покажи ПИН кода")
         self.assertNotContains(response, "654321")
 
     def test_reveal_requires_post(self):
@@ -33,7 +33,7 @@ class RevealPINTests(TestCase):
         self.client.force_login(self.user)
         response = self.client.post(reverse("reveal_pin"))
         self.assertContains(response, "654321")
-        self.assertContains(response, "personal")
+        self.assertContains(response, "личен")
 
     def test_reveal_response_is_not_cacheable(self):
         self.client.force_login(self.user)
@@ -47,7 +47,7 @@ class RevealPINTests(TestCase):
         self.assertNotContains(account, "654321")
         reveal = self.client.post(reverse("reveal_pin"))
         self.assertNotContains(reveal, "654321")
-        self.assertContains(reveal, "awaiting assignment")
+        self.assertContains(reveal, "очаква назначаване")
 
     def test_unauthenticated_reveal_redirects_to_login(self):
         response = self.client.post(reverse("reveal_pin"))
@@ -68,4 +68,4 @@ class RevealPINTests(TestCase):
         waiting = make_resident("waiting@example.com")
         self.client.force_login(waiting)
         response = self.client.get(reverse("account"))
-        self.assertContains(response, "awaiting assignment by an administrator")
+        self.assertContains(response, "очаква назначаване от администратор")

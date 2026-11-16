@@ -3,16 +3,16 @@
 {% block content %}
 <h1>{{ title }}</h1>
 <p>
-    Upload a UTF-8 file with one PIN per line (an optional <code>pin</code>
-    header row is allowed). PINs are validated, checked for duplicates via
-    keyed fingerprints, stored encrypted, and created as
-    <strong>UNPROGRAMMED</strong> — they must be programmed into the physical
-    lockbox and confirmed before they can be assigned.
+    Качете UTF-8 файл с по един ПИН код на ред (заглавен ред <code>pin</code>
+    е незадължителен). Кодовете се валидират, проверяват се за дубликати чрез
+    ключови отпечатъци, съхраняват се криптирани и се създават като
+    <strong>Непрограмирани</strong> — трябва да бъдат програмирани във
+    физическата кутия с ключ и потвърдени, преди да могат да се назначават.
 </p>
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form.as_p }}
-    <input type="submit" class="default" value="Import">
-    <a class="button" href="{{ back_url }}">Cancel</a>
+    <input type="submit" class="default" value="Импортирай">
+    <a class="button" href="{{ back_url }}">Отказ</a>
 </form>
 {% endblock %}

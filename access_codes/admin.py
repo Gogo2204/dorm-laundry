@@ -48,8 +48,9 @@ class LockboxPINAdmin(admin.ModelAdmin):
     def response_add(self, request, obj, post_url_continue=None):
         self.message_user(
             request,
-            "PIN stored encrypted as UNPROGRAMMED. Program it into the lockbox, "
-            "then use the 'Confirm programmed' action to make it available.",
+            "ПИН кодът е записан криптиран като „Непрограмиран“. Програмирайте го "
+            "в кутията с ключ и използвайте действието „Потвърди програмирането“, "
+            "за да стане свободен за назначаване.",
             messages.SUCCESS,
         )
         return redirect("admin:access_codes_lockboxpin_changelist")
@@ -72,25 +73,26 @@ class LockboxPINAdmin(admin.ModelAdmin):
         config = {
             "programmed": {
                 "expected": LockboxPIN.Status.UNPROGRAMMED,
-                "title": "Confirm these PINs are programmed into the lockbox",
+                "title": "Потвърдете, че тези ПИН кодове са програмирани в кутията",
                 "warning": (
-                    "Only confirm PINs you have personally programmed into the "
-                    "physical lockbox and tested. Confirmed PINs become "
-                    "AVAILABLE and may be assigned to residents immediately."
+                    "Потвърждавайте само ПИН кодове, които лично сте програмирали "
+                    "в физическата кутия с ключ и сте тествали. Потвърдените "
+                    "кодове стават „Свободни“ и могат веднага да бъдат назначени "
+                    "на живущи."
                 ),
                 "service": services.confirm_programmed,
-                "done": "marked AVAILABLE",
+                "done": "отбелязани като „Свободни“",
             },
             "removal": {
                 "expected": LockboxPIN.Status.REVOKE_PENDING,
-                "title": "Confirm these PINs are physically removed from the lockbox",
+                "title": "Потвърдете, че тези ПИН кодове са физически премахнати от кутията",
                 "warning": (
-                    "Only confirm PINs you have personally deleted from the "
-                    "physical lockbox. Until removal, the code still opens the "
-                    "lockbox regardless of what this application shows."
+                    "Потвърждавайте само ПИН кодове, които лично сте изтрили от "
+                    "физическата кутия с ключ. До премахването кодът продължава "
+                    "да отваря кутията, независимо какво показва приложението."
                 ),
                 "service": services.confirm_physical_removal,
-                "done": "marked REVOKED",
+                "done": "отбелязани като „Премахнати“",
             },
         }[kind]
 
@@ -100,12 +102,12 @@ class LockboxPINAdmin(admin.ModelAdmin):
         if request.POST.get("transition_confirmed"):
             count = config["service"](eligible, actor=request.user)
             if count:
-                self.message_user(request, f"{count} PIN(s) {config['done']}.", messages.SUCCESS)
+                self.message_user(request, f"ПИН кодове {config['done']}: {count}.", messages.SUCCESS)
             if skipped:
                 self.message_user(
                     request,
-                    f"{skipped} PIN(s) skipped (not in the required "
-                    f"{config['expected']} state).",
+                    f"Пропуснати ПИН кодове: {skipped} (не са в необходимото "
+                    f"състояние {config['expected']}).",
                     messages.WARNING,
                 )
             return None
@@ -125,11 +127,11 @@ class LockboxPINAdmin(admin.ModelAdmin):
             },
         )
 
-    @admin.action(description="Confirm programmed into lockbox (UNPROGRAMMED → AVAILABLE)")
+    @admin.action(description="Потвърди програмирането в кутията (Непрограмиран → Свободен)")
     def confirm_programmed_action(self, request, queryset):
         return self._transition_action(request, queryset, kind="programmed")
 
-    @admin.action(description="Confirm physical removal (REVOKE_PENDING → REVOKED)")
+    @admin.action(description="Потвърди физическото премахване (Чака премахване → Премахнат)")
     def confirm_removal_action(self, request, queryset):
         return self._transition_action(request, queryset, kind="removal")
 
@@ -147,7 +149,7 @@ class LockboxPINAdmin(admin.ModelAdmin):
 
     def import_csv_view(self, request):
         if not self.has_add_permission(request):
-            self.message_user(request, "You may not add PINs.", messages.ERROR)
+            self.message_user(request, "Нямате право да добавяте ПИН кодове.", messages.ERROR)
             return redirect("admin:access_codes_lockboxpin_changelist")
 
         form = PINImportForm(request.POST or None, request.FILES or None)
@@ -160,13 +162,13 @@ class LockboxPINAdmin(admin.ModelAdmin):
             if result.created:
                 self.message_user(
                     request,
-                    f"Imported {result.created} PIN(s) as UNPROGRAMMED. Program them "
-                    "into the lockbox, then confirm them to make them available.",
+                    f"Импортирани ПИН кодове: {result.created} (като „Непрограмирани“). "
+                    "Програмирайте ги в кутията с ключ и потвърдете, за да станат свободни.",
                     messages.SUCCESS,
                 )
             if result.duplicates:
                 self.message_user(
-                    request, f"Skipped {result.duplicates} duplicate PIN(s).", messages.WARNING
+                    request, f"Пропуснати дублирани ПИН кодове: {result.duplicates}.", messages.WARNING
                 )
             for error in result.errors:
                 self.message_user(request, error, messages.ERROR)
@@ -175,7 +177,7 @@ class LockboxPINAdmin(admin.ModelAdmin):
         context = {
             **self.admin_site.each_context(request),
             "form": form,
-            "title": "Import lockbox PINs from CSV",
+            "title": "Импортиране на ПИН кодове от CSV",
             "opts": self.model._meta,
             "back_url": reverse("admin:access_codes_lockboxpin_changelist"),
         }
@@ -207,21 +209,21 @@ class PINDeliveryAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
-    @admin.action(description="Retry failed/pending deliveries")
+    @admin.action(description="Опитай отново неуспешните/чакащите изпращания")
     def retry_action(self, request, queryset):
         sent, failed = services.retry_deliveries(queryset, actor=request.user)
         if sent:
-            self.message_user(request, f"Sent {sent} PIN email(s).", messages.SUCCESS)
+            self.message_user(request, f"Изпратени имейли с ПИН код: {sent}.", messages.SUCCESS)
         if failed:
             self.message_user(
                 request,
-                f"{failed} delivery attempt(s) did not succeed; see the delivery "
-                "records for details.",
+                f"Неуспешни опити за изпращане: {failed}; вижте записите за "
+                "изпращане за подробности.",
                 messages.WARNING,
             )
         if not sent and not failed:
             self.message_user(
-                request, "No failed or pending deliveries were selected.", messages.INFO
+                request, "Няма избрани неуспешни или чакащи изпращания.", messages.INFO
             )
 
 

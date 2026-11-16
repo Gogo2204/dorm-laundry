@@ -3,14 +3,14 @@
 {% block content %}
 <h1>{{ title }}</h1>
 <p>
-    Upload a UTF-8 CSV file with two columns: first name, last name.
-    A header row <code>first_name,last_name</code> is optional.
-    Duplicate names (after normalization) are skipped.
+    Качете UTF-8 CSV файл с две колони: име, фамилия.
+    Заглавен ред <code>first_name,last_name</code> е незадължителен.
+    Дублираните имена (след нормализация) се пропускат.
 </p>
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form.as_p }}
-    <input type="submit" class="default" value="Import">
-    <a class="button" href="{{ back_url }}">Cancel</a>
+    <input type="submit" class="default" value="Импортирай">
+    <a class="button" href="{{ back_url }}">Отказ</a>
 </form>
 {% endblock %}

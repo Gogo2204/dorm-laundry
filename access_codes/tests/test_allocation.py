@@ -72,14 +72,14 @@ class AllocationTests(TestCase):
         user = make_pending_user()
         token = account_services.make_verification_token(user)
         response = self.client.get(reverse("verify_email", args=[token]))
-        self.assertContains(response, "awaiting assignment by an administrator")
+        self.assertContains(response, "очаква назначаване от")
 
     def test_verification_page_mentions_emailed_pin(self):
         add_available_pin("111111")
         user = make_pending_user()
         token = account_services.make_verification_token(user)
         response = self.client.get(reverse("verify_email", args=[token]))
-        self.assertContains(response, "has been emailed to you")
+        self.assertContains(response, "беше изпратен на имейла ви")
 
     def test_unprogrammed_pins_are_never_allocated(self):
         services.add_pin("111111", actor=None)  # UNPROGRAMMED
@@ -163,7 +163,7 @@ class AllocationTests(TestCase):
             {"action": "allocate_pins", "_selected_action": [str(user.pk)]},
             follow=True,
         )
-        self.assertContains(response, "Allocated 1 PIN(s)")
+        self.assertContains(response, "Назначени ПИН кодове: 1")
         self.assertIsNotNone(services.user_assigned_pin(user))
         self.assertTrue(
             PINAuditLog.objects.filter(
@@ -183,7 +183,7 @@ class AllocationTests(TestCase):
             {"action": "allocate_pins", "_selected_action": [str(user.pk)]},
             follow=True,
         )
-        self.assertContains(response, "no AVAILABLE")
+        self.assertContains(response, "няма свободни")
 
     def test_users_awaiting_pin_query(self):
         waiting = make_pending_user("waiting@example.com")

@@ -5,6 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.formats import date_format
 from django.views.generic import TemplateView, View
 
 from . import services
@@ -84,7 +85,7 @@ class BookSlotView(LoginRequiredMixin, View):
         week = request.POST.get("week", "current")
         form = BookingForm(request.POST)
         if not form.is_valid():
-            messages.error(request, "That booking request was not valid. Please try again.")
+            messages.error(request, "Заявката за резервация не е валидна. Моля, опитайте отново.")
             return redirect(_schedule_url(week))
         try:
             reservation = services.book_slot(
@@ -98,8 +99,9 @@ class BookSlotView(LoginRequiredMixin, View):
         else:
             messages.success(
                 request,
-                f"Booked {reservation.machine_set} on {reservation.booking_date:%A %d %b} "
-                f"at {services.slot_label(reservation.slot_number)}.",
+                f"Резервирахте {reservation.machine_set} за "
+                f"{date_format(reservation.booking_date, 'l, j E')}, "
+                f"{services.slot_label(reservation.slot_number)} ч.",
             )
         return redirect(_schedule_url(week))
 
@@ -133,9 +135,9 @@ class CancelReservationView(LoginRequiredMixin, View):
         else:
             messages.success(
                 request,
-                f"Cancelled {reservation.machine_set} on "
-                f"{reservation.booking_date:%A %d %b} "
-                f"at {services.slot_label(reservation.slot_number)}.",
+                f"Отказахте {reservation.machine_set} за "
+                f"{date_format(reservation.booking_date, 'l, j E')}, "
+                f"{services.slot_label(reservation.slot_number)} ч.",
             )
         next_url = request.POST.get("next", "")
         if next_url == "reservations":

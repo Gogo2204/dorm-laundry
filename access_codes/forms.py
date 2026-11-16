@@ -9,10 +9,10 @@ class LockboxPINAddForm(forms.ModelForm):
     """Secure single-PIN entry: password-style input, never redisplayed."""
 
     pin_value = forms.CharField(
-        label="PIN",
+        label="ПИН код",
         widget=forms.PasswordInput(render_value=False, attrs={"autocomplete": "off"}),
-        help_text="Accepted format: 4–8 digits by default. The value is encrypted "
-        "at rest and will not be shown again.",
+        help_text="Приет формат: по подразбиране 4–8 цифри. Стойността се "
+        "съхранява криптирана и няма да бъде показана отново.",
     )
 
     class Meta:
@@ -26,7 +26,7 @@ class LockboxPINAddForm(forms.ModelForm):
             if LockboxPIN.objects.filter(
                 pin_fingerprint=crypto.pin_fingerprint(value)
             ).exists():
-                raise ValidationError("This PIN is already in the inventory.")
+                raise ValidationError("Този ПИН код вече е в наличността.")
         except ImproperlyConfigured as exc:
             raise ValidationError(str(exc))
         return value
@@ -34,9 +34,9 @@ class LockboxPINAddForm(forms.ModelForm):
 
 class PINImportForm(forms.Form):
     csv_file = forms.FileField(
-        label="CSV file",
-        help_text='One PIN per line. An optional "pin" header row is allowed. '
-        "Values are encrypted at rest and never echoed back.",
+        label="CSV файл",
+        help_text='По един ПИН код на ред. Заглавен ред "pin" е незадължителен. '
+        "Стойностите се съхраняват криптирани и никога не се показват обратно.",
         widget=forms.ClearableFileInput(attrs={"accept": ".csv,.txt"}),
     )
 
@@ -45,5 +45,5 @@ class PINImportForm(forms.Form):
         try:
             self.cleaned_data["lines"] = uploaded.read().decode("utf-8-sig").splitlines()
         except UnicodeDecodeError:
-            raise ValidationError("The file is not valid UTF-8 text.")
+            raise ValidationError("Файлът не е валиден UTF-8 текст.")
         return uploaded

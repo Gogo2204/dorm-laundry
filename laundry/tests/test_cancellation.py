@@ -9,7 +9,7 @@ from .utils import FRI, MON, WED, freeze_now, make_admin, make_resident
 class CancellationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.set1 = MachineSet.objects.get(name="Set 1")
+        cls.set1 = MachineSet.objects.get(name="Комплект 1")
         cls.ana = make_resident("ana@example.com")
         cls.boris = make_resident("boris@example.com", "Boris", "Iliev")
         cls.admin = make_admin()
@@ -62,12 +62,12 @@ class CancellationTests(TestCase):
         reservation = self._future_reservation()
         with freeze_now():
             services.cancel_reservation(reservation=reservation, cancelled_by=self.ana)
-            with self.assertRaisesMessage(services.BookingError, "already cancelled"):
+            with self.assertRaisesMessage(services.BookingError, "вече е отказана"):
                 services.cancel_reservation(reservation=reservation, cancelled_by=self.ana)
 
     def test_resident_cannot_cancel_someone_elses_reservation(self):
         reservation = self._future_reservation()
-        with freeze_now(), self.assertRaisesMessage(services.BookingError, "own"):
+        with freeze_now(), self.assertRaisesMessage(services.BookingError, "собствените си"):
             services.cancel_reservation(reservation=reservation, cancelled_by=self.boris)
         reservation.refresh_from_db()
         self.assertEqual(reservation.status, Reservation.Status.ACTIVE)

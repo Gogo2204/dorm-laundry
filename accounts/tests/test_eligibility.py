@@ -23,7 +23,7 @@ REGISTER_DATA = {
 class EligibilityWorkflowTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.set1 = MachineSet.objects.get(name="Set 1")
+        cls.set1 = MachineSet.objects.get(name="Комплект 1")
         cls.admin = make_admin()
         cls.ana = make_resident("ana@example.com", "Elena", "Demirova")
         cls.entry = ApprovedResident.objects.create(
@@ -71,19 +71,19 @@ class EligibilityWorkflowTests(TestCase):
             {**REGISTER_DATA, "first_name": "Boris", "last_name": "Iliev",
              "email": "boris@example.com"},
         )
-        self.assertContains(response, "approved residents")
+        self.assertContains(response, "одобрени живущи")
         self.assertFalse(User.objects.filter(email="boris@example.com").exists())
 
     def test_claimed_entry_blocks_reregistration_while_ineligible_and_after_restore(self):
         services.revoke_eligibility(self.entry, actor=self.admin)
         response = self.client.post(reverse("register"), REGISTER_DATA)
-        self.assertContains(response, "approved residents")
+        self.assertContains(response, "одобрени живущи")
 
         services.restore_eligibility(self.entry)
         # The entry is still claimed by the original account, so no duplicate
         # account can be created for the same name.
         response = self.client.post(reverse("register"), REGISTER_DATA)
-        self.assertContains(response, "approved residents")
+        self.assertContains(response, "одобрени живущи")
         self.assertEqual(User.objects.filter(last_name="Demirova").count(), 1)
 
     def test_restore_eligibility_does_not_reactivate_account(self):
@@ -110,7 +110,7 @@ class EligibilityWorkflowTests(TestCase):
 class EligibilityAdminTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.set1 = MachineSet.objects.get(name="Set 1")
+        cls.set1 = MachineSet.objects.get(name="Комплект 1")
         cls.admin = make_admin()
         cls.ana = make_resident("ana@example.com", "Elena", "Demirova")
         cls.entry = ApprovedResident.objects.create(
@@ -136,7 +136,7 @@ class EligibilityAdminTests(TestCase):
                 },
                 follow=True,
             )
-        self.assertContains(response, "no longer eligible")
+        self.assertContains(response, "вече не е допустим")
         self.entry.refresh_from_db()
         self.ana.refresh_from_db()
         reservation.refresh_from_db()
@@ -150,7 +150,7 @@ class EligibilityAdminTests(TestCase):
             {"action": "mark_ineligible", "_selected_action": [str(self.entry.pk)]},
             follow=True,
         )
-        self.assertContains(response, "Marked 1 resident(s) ineligible")
+        self.assertContains(response, "Отбелязани като недопустими: 1")
         self.ana.refresh_from_db()
         self.assertFalse(self.ana.is_active)
 
@@ -161,8 +161,8 @@ class EligibilityAdminTests(TestCase):
             {"action": "mark_eligible", "_selected_action": [str(self.entry.pk)]},
             follow=True,
         )
-        self.assertContains(response, "remain")
-        self.assertContains(response, "deactivated until explicitly reactivated")
+        self.assertContains(response, "остават")
+        self.assertContains(response, "деактивирани, докато не бъдат изрично активирани")
         self.entry.refresh_from_db()
         self.ana.refresh_from_db()
         self.assertTrue(self.entry.is_eligible)
@@ -181,7 +181,7 @@ class EligibilityAdminTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 200)  # form redisplayed with error
-        self.assertContains(response, "last active administrator")
+        self.assertContains(response, "последният активен администратор")
         entry.refresh_from_db()
         self.assertTrue(entry.is_eligible)
 
@@ -200,7 +200,7 @@ class EligibilityAdminTests(TestCase):
 class ReactivationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.set1 = MachineSet.objects.get(name="Set 1")
+        cls.set1 = MachineSet.objects.get(name="Комплект 1")
         cls.admin = make_admin()
         cls.ana = make_resident("ana@example.com", "Elena", "Demirova")
         cls.entry = ApprovedResident.objects.create(
@@ -261,7 +261,7 @@ class ReactivationTests(TestCase):
             {"action": "reactivate_users", "_selected_action": [str(self.ana.pk)]},
             follow=True,
         )
-        self.assertContains(response, "Reactivated 1 user(s)")
+        self.assertContains(response, "Активирани отново: 1")
         self.ana.refresh_from_db()
         self.assertTrue(self.ana.is_active)
 
@@ -273,7 +273,7 @@ class ReactivationTests(TestCase):
             {"action": "reactivate_users", "_selected_action": [str(self.ana.pk)]},
             follow=True,
         )
-        self.assertContains(response, "ineligible")
+        self.assertContains(response, "недопустим")
         self.ana.refresh_from_db()
         self.assertFalse(self.ana.is_active)
 
@@ -295,4 +295,4 @@ class ReactivationTests(TestCase):
             },
         )
         self.assertFalse(form.is_valid())
-        self.assertIn("ineligible", str(form.errors))
+        self.assertIn("недопустим", str(form.errors))

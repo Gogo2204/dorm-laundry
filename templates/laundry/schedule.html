@@ -1,26 +1,26 @@
 {% extends "base.html" %}
 
-{% block title %}Schedule — Dorm Laundry{% endblock %}
+{% block title %}График — Пералня{% endblock %}
 
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-    <h1 class="h4 mb-0">Laundry schedule</h1>
-    <div class="btn-group" role="group" aria-label="Week selection">
+    <h1 class="h4 mb-0">График на пералнята</h1>
+    <div class="btn-group" role="group" aria-label="Избор на седмица">
         <a href="{% url 'schedule' %}"
            class="btn btn-sm {% if week == 'current' %}btn-primary{% else %}btn-outline-primary{% endif %}">
-            This week
+            Тази седмица
         </a>
         <a href="{% url 'schedule' %}?week=next"
            class="btn btn-sm {% if week == 'next' %}btn-primary{% else %}btn-outline-primary{% endif %}">
-            Next week
+            Следваща седмица
         </a>
     </div>
 </div>
 
 <p class="text-muted small">
-    Each slot books one washer + dryer set. Limit: two reservations per week,
-    no consecutive slots on the same day. Slot 22:00–02:00 belongs to the day
-    it starts.
+    Всеки интервал резервира един комплект пералня и сушилня. Лимит: две
+    резервации на седмица, без последователни интервали в един ден. Интервалът
+    22:00–02:00 принадлежи към деня, в който започва.
 </p>
 
 <div class="row g-3">
@@ -30,14 +30,14 @@
                 <div class="card-header {% if day.is_today %}bg-primary text-white{% endif %}">
                     <strong>{{ day.date|date:"l" }}</strong>
                     <span class="{% if day.is_today %}text-white-50{% else %}text-muted{% endif %} small">
-                        {{ day.date|date:"j N" }}{% if day.is_today %} · today{% endif %}
+                        {{ day.date|date:"j N" }}{% if day.is_today %} · днес{% endif %}
                     </span>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
                         <thead>
                             <tr>
-                                <th scope="col" class="text-nowrap small">Slot</th>
+                                <th scope="col" class="text-nowrap small">Интервал</th>
                                 {% for machine_set in machine_sets %}
                                     <th scope="col" class="small text-center">{{ machine_set.name }}</th>
                                 {% endfor %}
@@ -59,7 +59,7 @@
                                                 {% if cell.is_mine %}
                                                     <a class="btn btn-outline-danger btn-sm py-0"
                                                        href="{% url 'cancel_reservation' cell.reservation.pk %}?next={{ week }}">
-                                                        Cancel
+                                                        Откажи
                                                     </a>
                                                 {% endif %}
                                             {% elif cell.bookable %}
@@ -70,7 +70,7 @@
                                                     <input type="hidden" name="slot_number" value="{{ slot.number }}">
                                                     <input type="hidden" name="week" value="{{ week }}">
                                                     <button type="submit" class="btn btn-outline-primary btn-sm py-0">
-                                                        Book
+                                                        Резервирай
                                                     </button>
                                                 </form>
                                             {% else %}

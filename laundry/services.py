@@ -45,9 +45,10 @@ def slot_end(booking_date: dt.date, slot_number: int) -> dt.datetime:
 
 
 def slot_label(slot_number: int) -> str:
-    start_hour, end_hour, day_offset = SLOT_TIMES[slot_number]
-    suffix = " (+1 day)" if day_offset else ""
-    return f"{start_hour:02d}:00–{end_hour:02d}:00{suffix}"
+    """Visible label only — slot 5 still *ends* at 02:00 on the next day
+    (see slot_end); the overnight carry is intentionally not shown."""
+    start_hour, end_hour, _ = SLOT_TIMES[slot_number]
+    return f"{start_hour:02d}:00–{end_hour:02d}:00"
 
 
 def week_bounds(day: dt.date) -> tuple[dt.date, dt.date]:
@@ -84,24 +85,24 @@ def book_slot(
     whose violation is translated into a friendly error.
     """
     if slot_number not in SLOT_TIMES:
-        raise BookingError("Choose a valid time slot.")
+        raise BookingError("Изберете валиден времеви интервал.")
     if not machine_set.is_active:
-        raise BookingError("This machine set is currently not available for booking.")
+        raise BookingError("Този комплект в момента не е достъпен за резервации.")
 
     now = timezone.now()
     today = timezone.localdate(now)
     first_day, last_day = booking_horizon(today)
     if not (first_day <= booking_date <= last_day):
-        raise BookingError("You can only book slots in the current or next week.")
+        raise BookingError("Можете да резервирате само за текущата или следващата седмица.")
     if slot_start(booking_date, slot_number) <= now:
-        raise BookingError("This slot has already started and can no longer be booked.")
+        raise BookingError("Този интервал вече е започнал и не може да бъде резервиран.")
 
     try:
         with transaction.atomic():
             # Serialise bookings per user (no-op on SQLite, row lock on PostgreSQL).
             locked_user = User.objects.select_for_update().get(pk=user.pk)
             if not locked_user.is_active or locked_user.deactivated_at is not None:
-                raise BookingError("Your account is not allowed to make reservations.")
+                raise BookingError("Профилът ви няма право да прави резервации.")
 
             active_same_day = Reservation.objects.filter(
                 user=user,
@@ -110,16 +111,16 @@ def book_slot(
             ).values_list("slot_number", flat=True)
             if slot_number in active_same_day:
                 raise BookingError(
-                    "You already have a reservation for this slot on another machine set."
+                    "Вече имате резервация за този интервал на друг комплект."
                 )
             if {slot_number - 1, slot_number + 1} & set(active_same_day):
                 raise BookingError(
-                    "You cannot book two consecutive slots on the same day. "
-                    "Leave at least one slot between your reservations."
+                    "Не можете да резервирате два последователни интервала в един и същи ден. "
+                    "Оставете поне един свободен интервал между резервациите си."
                 )
             if quota_used(user, booking_date) >= WEEKLY_QUOTA:
                 raise BookingError(
-                    f"You have reached the limit of {WEEKLY_QUOTA} reservations for that week."
+                    f"Достигнали сте лимита от {WEEKLY_QUOTA} резервации за тази седмица."
                 )
             if Reservation.objects.filter(
                 machine_set=machine_set,
@@ -127,7 +128,7 @@ def book_slot(
                 slot_number=slot_number,
                 status=Reservation.Status.ACTIVE,
             ).exists():
-                raise BookingError("This machine set is already booked for that slot.")
+                raise BookingError("Този комплект вече е зает за избрания интервал.")
 
             return Reservation.objects.create(
                 user=user,
@@ -137,7 +138,7 @@ def book_slot(
             )
     except IntegrityError:
         # A concurrent request won the race; the unique constraint held.
-        raise BookingError("That slot was just taken. Please pick another one.")
+        raise BookingError("Този интервал току-що беше зает. Моля, изберете друг.")
 
 
 def cancel_reservation(*, reservation: Reservation, cancelled_by: User) -> Reservation:
@@ -149,7 +150,7 @@ def cancel_reservation(*, reservation: Reservation, cancelled_by: User) -> Reser
     is kept for history.
     """
     if reservation.user_id != cancelled_by.pk and not cancelled_by.is_admin:
-        raise BookingError("You can only cancel your own reservations.")
+        raise BookingError("Можете да отказвате само собствените си резервации.")
 
     with transaction.atomic():
         locked = (
@@ -158,7 +159,7 @@ def cancel_reservation(*, reservation: Reservation, cancelled_by: User) -> Reser
             .get(pk=reservation.pk)
         )
         if locked.status != Reservation.Status.ACTIVE:
-            raise BookingError("This reservation is already cancelled.")
+            raise BookingError("Тази резервация вече е отказана.")
 
         now = timezone.now()
         locked.status = Reservation.Status.CANCELLED

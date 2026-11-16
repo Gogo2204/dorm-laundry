@@ -42,20 +42,22 @@ class User(AbstractUser):
     """Custom user: unique email is the login identifier; no username."""
 
     username = None
-    email = models.EmailField("email address", unique=True)
-    first_name = models.CharField("first name", max_length=150)
-    last_name = models.CharField("last name", max_length=150)
+    email = models.EmailField("имейл адрес", unique=True)
+    first_name = models.CharField("име", max_length=150)
+    last_name = models.CharField("фамилия", max_length=150)
     email_verified = models.BooleanField(
+        "потвърден имейл",
         default=False,
-        help_text="Set when the user has confirmed their email address.",
+        help_text="Отбелязва се, когато живущият потвърди имейл адреса си.",
     )
     deactivated_at = models.DateTimeField(
+        "деактивиран на",
         null=True,
         blank=True,
         help_text=(
-            "Set when an administrator deactivates this account. Distinguishes "
-            "administrative deactivation from a pending email verification; "
-            "accounts with this set are never reactivated by email links."
+            "Попълва се, когато администратор деактивира профила. Разграничава "
+            "административната деактивация от чакащо потвърждение на имейл; "
+            "профили с попълнено поле никога не се активират от имейл линкове."
         ),
     )
     deactivated_by = models.ForeignKey(
@@ -64,13 +66,18 @@ class User(AbstractUser):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="deactivated_users",
-        help_text="Administrator responsible for the deactivation, when known.",
+        verbose_name="деактивиран от",
+        help_text="Администраторът, извършил деактивацията, когато е известен.",
     )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["first_name", "last_name"]
 
     objects = UserManager()
+
+    class Meta:
+        verbose_name = "потребител"
+        verbose_name_plural = "потребители"
 
     def __str__(self) -> str:
         return self.email
@@ -84,8 +91,8 @@ class User(AbstractUser):
 class ApprovedResident(models.Model):
     """A resident name approved for registration by an administrator (UC-01)."""
 
-    first_name = models.CharField(max_length=150)
-    last_name = models.CharField(max_length=150)
+    first_name = models.CharField("име", max_length=150)
+    last_name = models.CharField("фамилия", max_length=150)
     normalized_first_name = models.CharField(max_length=150, editable=False)
     normalized_last_name = models.CharField(max_length=150, editable=False)
     registered_user = models.OneToOneField(
@@ -94,22 +101,26 @@ class ApprovedResident(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="approved_resident",
-        help_text="The account that has claimed this approved name, if any.",
+        verbose_name="регистриран профил",
+        help_text="Профилът, който е заявил това одобрено име, ако има такъв.",
     )
     is_eligible = models.BooleanField(
+        "допустим за регистрация",
         default=True,
-        help_text="Uncheck to prevent this name from being used for registration.",
+        help_text="Премахнете отметката, за да забраните регистрация с това име.",
     )
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField("добавен на", auto_now_add=True)
 
     class Meta:
+        verbose_name = "одобрен живущ"
+        verbose_name_plural = "одобрени живущи"
         constraints = [
             models.UniqueConstraint(
                 fields=["normalized_first_name", "normalized_last_name"],
                 name="unique_normalized_resident_name",
                 violation_error_message=(
-                    "An approved resident with this name already exists. "
-                    "Identical names must be resolved manually by an administrator."
+                    "Одобрен живущ с това име вече съществува. Еднаквите имена "
+                    "се разрешават ръчно от администратор."
                 ),
             )
         ]

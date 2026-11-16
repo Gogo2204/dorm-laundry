@@ -46,7 +46,7 @@ def add_pin(pin_value: str, *, actor: User | None) -> LockboxPIN:
     crypto.validate_pin_format(pin_value)
     fingerprint = crypto.pin_fingerprint(pin_value)
     if LockboxPIN.objects.filter(pin_fingerprint=fingerprint).exists():
-        raise DuplicatePINError("This PIN is already in the inventory.")
+        raise DuplicatePINError("Този ПИН код вече е в наличността.")
     pin = LockboxPIN.objects.create(
         encrypted_pin=crypto.encrypt_pin(pin_value), pin_fingerprint=fingerprint
     )
@@ -74,7 +74,7 @@ def import_pins(lines: list[str], *, actor: User | None) -> ImportResult:
         except DuplicatePINError:
             result.duplicates += 1
         except ValidationError:
-            result.errors.append(f"Line {line_number}: invalid PIN format.")
+            result.errors.append(f"Ред {line_number}: невалиден формат на ПИН код.")
     return result
 
 
@@ -181,7 +181,7 @@ def deliver_pin_email(delivery_id: int, *, actor: User | None = None) -> PINDeli
 
     if not _delivery_allowed(delivery):
         delivery.status = PINDelivery.Status.CANCELLED
-        delivery.last_error = "Recipient or PIN no longer eligible for delivery."
+        delivery.last_error = "Получателят или ПИН кодът вече не отговарят на условията за изпращане."
         delivery.save(update_fields=["status", "last_error"])
         _audit(
             delivery.pin,
@@ -200,7 +200,7 @@ def deliver_pin_email(delivery_id: int, *, actor: User | None = None) -> PINDeli
             {"user": delivery.user, "pin": crypto.decrypt_pin(delivery.pin.encrypted_pin)},
         )
         send_mail(
-            "Your Dorm Laundry lockbox PIN",
+            "Вашият ПИН код за пералнята",
             body,
             None,
             [delivery.user.email],
@@ -275,7 +275,7 @@ def mark_revoke_pending_for_user(user: User, *, actor: User | None = None) -> in
             flagged += 1
         PINDelivery.objects.filter(
             user=user, status=PINDelivery.Status.PENDING
-        ).update(status=PINDelivery.Status.CANCELLED, last_error="User deactivated.")
+        ).update(status=PINDelivery.Status.CANCELLED, last_error="Потребителят е деактивиран.")
     return flagged
 
 

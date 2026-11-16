@@ -10,7 +10,7 @@ from .utils import FRI, MON, NEXT_MON, PASSWORD, freeze_now, make_admin, make_re
 class ScheduleViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.set1 = MachineSet.objects.get(name="Set 1")
+        cls.set1 = MachineSet.objects.get(name="Комплект 1")
         cls.ana = make_resident("ana@example.com")
         cls.boris = make_resident("boris@example.com", "Boris", "Iliev")
 
@@ -23,12 +23,12 @@ class ScheduleViewTests(TestCase):
         self.client.force_login(self.ana)
         with freeze_now():
             response = self.client.get(reverse("schedule"))
-        for day_name in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]:
+        for day_name in ["понеделник", "вторник", "сряда", "четвъртък", "петък", "събота", "неделя"]:
             self.assertContains(response, day_name)
-        for set_name in ["Set 1", "Set 2", "Set 3"]:
+        for set_name in ["Комплект 1", "Комплект 2", "Комплект 3"]:
             self.assertContains(response, set_name)
         self.assertContains(response, "06:00–10:00")
-        self.assertContains(response, "22:00–02:00 (+1 day)")
+        self.assertContains(response, "22:00–02:00")
 
     def test_occupied_slot_shows_resident_name_but_never_email(self):
         with freeze_now():
@@ -61,10 +61,10 @@ class ScheduleViewTests(TestCase):
         with freeze_now():
             current = self.client.get(reverse("schedule"))
             response = self.client.get(reverse("schedule"), {"week": "next"})
-        self.assertContains(current, "18 Nov")       # today is in the current week
-        self.assertNotContains(current, "23 Nov")
-        self.assertContains(response, "23 Nov")      # next week's Monday
-        self.assertContains(response, "29 Nov")      # next week's Sunday
+        self.assertContains(current, "18 Ноем.")     # today is in the current week
+        self.assertNotContains(current, "23 Ноем.")
+        self.assertContains(response, "23 Ноем.")    # next week's Monday
+        self.assertContains(response, "29 Ноем.")    # next week's Sunday
 
     def test_navbar_treats_schedule_as_the_landing_page(self):
         self.client.force_login(self.ana)
@@ -75,8 +75,8 @@ class ScheduleViewTests(TestCase):
             response, f'class="navbar-brand" href="{reverse("schedule")}"'
         )
         self.assertNotContains(response, ">Home<")
-        self.assertContains(response, ">Schedule<")
-        self.assertContains(response, ">My Reservations<")
+        self.assertContains(response, ">График<")
+        self.assertContains(response, ">Моите резервации<")
 
     def test_root_url_redirects_to_schedule(self):
         self.client.force_login(self.ana)
@@ -96,7 +96,7 @@ class ScheduleViewTests(TestCase):
 class BookSlotViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.set1 = MachineSet.objects.get(name="Set 1")
+        cls.set1 = MachineSet.objects.get(name="Комплект 1")
         cls.ana = make_resident("ana@example.com")
 
     def _post(self, **overrides):
@@ -117,7 +117,7 @@ class BookSlotViewTests(TestCase):
         self.client.force_login(self.ana)
         with freeze_now():
             response = self._post()
-        self.assertContains(response, "Booked Set 1")
+        self.assertContains(response, "Резервирахте Комплект 1")
         self.assertEqual(Reservation.objects.count(), 1)
 
     def test_booking_error_is_shown(self):
@@ -129,14 +129,14 @@ class BookSlotViewTests(TestCase):
         self.client.force_login(self.ana)
         with freeze_now():
             response = self._post()
-        self.assertContains(response, "already booked")
+        self.assertContains(response, "вече е зает")
         self.assertEqual(Reservation.objects.count(), 1)
 
     def test_invalid_payload_is_handled(self):
         self.client.force_login(self.ana)
         with freeze_now():
             response = self._post(booking_date="not-a-date")
-        self.assertContains(response, "not valid")
+        self.assertContains(response, "не е валидна")
         self.assertEqual(Reservation.objects.count(), 0)
 
     def test_get_not_allowed(self):
@@ -147,7 +147,7 @@ class BookSlotViewTests(TestCase):
 class CancelReservationViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.set1 = MachineSet.objects.get(name="Set 1")
+        cls.set1 = MachineSet.objects.get(name="Комплект 1")
         cls.ana = make_resident("ana@example.com")
         cls.boris = make_resident("boris@example.com", "Boris", "Iliev")
         cls.admin = make_admin()
@@ -167,9 +167,9 @@ class CancelReservationViewTests(TestCase):
         url = reverse("cancel_reservation", args=[reservation.pk])
         with freeze_now():
             confirm = self.client.get(url)
-            self.assertContains(confirm, "Cancel this reservation?")
+            self.assertContains(confirm, "Да откажем ли тази резервация?")
             response = self.client.post(url, {"next": "reservations"}, follow=True)
-        self.assertContains(response, "Cancelled Set 1")
+        self.assertContains(response, "Отказахте Комплект 1")
         reservation.refresh_from_db()
         self.assertEqual(reservation.status, Reservation.Status.CANCELLED)
 
@@ -197,7 +197,7 @@ class CancelReservationViewTests(TestCase):
 class MyReservationsViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.set1 = MachineSet.objects.get(name="Set 1")
+        cls.set1 = MachineSet.objects.get(name="Комплект 1")
         cls.ana = make_resident("ana@example.com")
 
     def test_login_required(self):
@@ -222,9 +222,9 @@ class MyReservationsViewTests(TestCase):
         self.client.force_login(self.ana)
         with freeze_now():
             response = self.client.get(reverse("my_reservations"))
-        self.assertContains(response, "Upcoming")
-        self.assertContains(response, "History")
-        self.assertContains(response, "Cancelled")
+        self.assertContains(response, "Предстоящи")
+        self.assertContains(response, "История")
+        self.assertContains(response, "Отказана")
         self.assertContains(response, reverse("cancel_reservation", args=[upcoming.pk]))
         self.assertNotContains(response, reverse("cancel_reservation", args=[past.pk]))
 

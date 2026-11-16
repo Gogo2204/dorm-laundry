@@ -20,9 +20,9 @@ from .models import ApprovedResident, User, normalize_name
 EMAIL_VERIFICATION_SALT = "accounts.email-verification"
 
 NAME_NOT_APPROVED_MESSAGE = (
-    "We could not match your name to an unclaimed entry on the approved residents "
-    "list. Check the spelling, or contact an administrator if you believe you are "
-    "eligible."
+    "Не открихме свободен запис в списъка с одобрени живущи, който да съвпада с "
+    "това име. Проверете изписването или се свържете с администратор, ако "
+    "смятате, че имате право на достъп."
 )
 
 
@@ -68,7 +68,7 @@ def register_resident(*, first_name: str, last_name: str, email: str, password: 
             if not claimed:
                 raise RegistrationError(NAME_NOT_APPROVED_MESSAGE)
     except IntegrityError:
-        raise RegistrationError("An account with this email address already exists.")
+        raise RegistrationError("Вече съществува профил с този имейл адрес.")
     return user
 
 
@@ -96,7 +96,7 @@ def send_verification_email(user: User, request: HttpRequest) -> None:
         "accounts/emails/verify_email.txt",
         {"user": user, "verification_url": url, "timeout_hours": settings.EMAIL_VERIFICATION_TIMEOUT // 3600},
     )
-    send_mail("Confirm your Dorm Laundry registration", body, None, [user.email])
+    send_mail("Потвърдете регистрацията си — Пералня на общежитието", body, None, [user.email])
 
 
 def verify_email_token(token: str) -> tuple[VerificationResult, User | None]:
@@ -165,8 +165,8 @@ def check_admin_change(user: User, *, is_active: bool, is_staff: bool, is_superu
         return
     if not other_active_admin_exists(user):
         raise ValidationError(
-            "This is the last active administrator. Grant administrator access to "
-            "another account before deactivating, demoting, or deleting this one."
+            "Това е последният активен администратор. Дайте администраторски "
+            "права на друг профил, преди да деактивирате, понижите или изтриете този."
         )
 
 
@@ -250,9 +250,9 @@ def check_can_reactivate(user: User) -> None:
     entry = getattr(user, "approved_resident", None)
     if entry is not None and not entry.is_eligible:
         raise ValidationError(
-            "This resident's approved-list entry is marked ineligible. Restore "
-            "eligibility on the approved residents list before reactivating "
-            "the account."
+            "Записът на този живущ в списъка с одобрени е отбелязан като "
+            "недопустим. Възстановете допустимостта в списъка с одобрени живущи, "
+            "преди да активирате профила отново."
         )
 
 

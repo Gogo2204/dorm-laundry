@@ -12,23 +12,23 @@ from .forms import RegistrationForm
 VERIFICATION_MESSAGES = {
     services.VerificationResult.VERIFIED: (
         True,
-        "Your email address is confirmed and your account is active. You can now log in.",
+        "Имейл адресът ви е потвърден и профилът ви е активен. Вече можете да влезете.",
     ),
     services.VerificationResult.ALREADY_VERIFIED: (
         True,
-        "This email address was already confirmed. You can log in.",
+        "Този имейл адрес вече е потвърден. Можете да влезете.",
     ),
     services.VerificationResult.EXPIRED: (
         False,
-        "This verification link has expired. Please register again or contact an administrator.",
+        "Линкът за потвърждение е изтекъл. Моля, регистрирайте се отново или се свържете с администратор.",
     ),
     services.VerificationResult.INVALID: (
         False,
-        "This verification link is not valid.",
+        "Този линк за потвърждение не е валиден.",
     ),
     services.VerificationResult.DEACTIVATED: (
         False,
-        "This account cannot be activated. Please contact an administrator.",
+        "Този профил не може да бъде активиран. Моля, свържете се с администратор.",
     ),
 }
 
@@ -74,12 +74,12 @@ class VerifyEmailView(TemplateView):
 
             if user_assigned_pin(user) is not None:
                 context["pin_note"] = (
-                    "Your personal lockbox PIN has been emailed to you."
+                    "Вашият личен ПИН код за кутията с ключ беше изпратен на имейла ви."
                 )
             else:
                 context["pin_note"] = (
-                    "Your lockbox PIN is awaiting assignment by an administrator; "
-                    "it will be emailed to you as soon as one is available."
+                    "Вашият ПИН код за кутията с ключ очаква назначаване от "
+                    "администратор; ще го получите по имейл веднага щом има свободен."
                 )
         return context
 

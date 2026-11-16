@@ -17,7 +17,7 @@ from laundry.tests.utils import FRI, MON, SAT, WED, freeze_now, make_admin, make
 class DeactivationReservationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.set1 = MachineSet.objects.get(name="Set 1")
+        cls.set1 = MachineSet.objects.get(name="Комплект 1")
         cls.admin = make_admin()
         cls.ana = make_resident("ana@example.com")
 
@@ -147,7 +147,7 @@ class DeactivationReservationTests(TestCase):
 class DeactivationAdminPathTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.set1 = MachineSet.objects.get(name="Set 1")
+        cls.set1 = MachineSet.objects.get(name="Комплект 1")
         cls.admin = make_admin()
         cls.ana = make_resident("ana@example.com")
 

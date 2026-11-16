@@ -105,23 +105,23 @@ class CSVImportTests(TestCase):
     def test_import_creates_residents(self):
         response = self._upload(b"first_name,last_name\nAna,Petrova\nMira,Koleva\n")
         self.assertEqual(ApprovedResident.objects.count(), 2)
-        self.assertContains(response, "Imported 2")
+        self.assertContains(response, "Импортирани одобрени живущи: 2")
 
     def test_duplicates_are_skipped(self):
         ApprovedResident.objects.create(first_name="Ana", last_name="Petrova")
         response = self._upload(b"ANA,petrova\nMira,Koleva\n")
         self.assertEqual(ApprovedResident.objects.count(), 2)
-        self.assertContains(response, "Skipped 1")
+        self.assertContains(response, "Пропуснати дублирани имена: 1")
 
     def test_malformed_rows_are_reported(self):
         response = self._upload(b"OnlyOneColumn\nAna,Petrova\n")
         self.assertEqual(ApprovedResident.objects.count(), 1)
-        self.assertContains(response, "Line 1")
+        self.assertContains(response, "Ред 1")
 
     def test_non_utf8_file_is_rejected(self):
         response = self._upload("Ана,Петрова".encode("cp1251"))
         self.assertEqual(ApprovedResident.objects.count(), 0)
-        self.assertContains(response, "not valid UTF-8")
+        self.assertContains(response, "не е валиден UTF-8")
 
     def test_ordinary_user_denied(self):
         resident = User.objects.create_user(email="res@example.com", password="resident-pass-1")

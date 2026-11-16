@@ -3,7 +3,7 @@
 {% block object-tools-items %}
     <li>
         <a href="{% url 'admin:access_codes_lockboxpin_import_csv' %}" class="addlink">
-            Import from CSV
+            Импортиране от CSV
         </a>
     </li>
     {{ block.super }}
@@ -11,11 +11,11 @@
 
 {% block result_list %}
     <div style="margin: 0 0 12px 0;">
-        <strong>Inventory:</strong>
+        <strong>Наличност:</strong>
         {% for label, count in status_counts %}
             <span style="margin-right: 14px;">{{ label }}: <strong>{{ count }}</strong></span>
         {% endfor %}
-        <span>Verified residents awaiting a PIN: <strong>{{ awaiting_pin_count }}</strong></span>
+        <span>Потвърдени живущи, чакащи ПИН код: <strong>{{ awaiting_pin_count }}</strong></span>
     </div>
     {{ block.super }}
 {% endblock %}

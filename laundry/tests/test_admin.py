@@ -10,7 +10,7 @@ from .utils import FRI, MON, freeze_now, make_admin, make_resident
 class ReservationAdminTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.set1 = MachineSet.objects.get(name="Set 1")
+        cls.set1 = MachineSet.objects.get(name="Комплект 1")
         cls.admin = make_admin()
         cls.ana = make_resident("ana@example.com")
 
@@ -66,7 +66,7 @@ class ReservationAdminTests(TestCase):
                 },
                 follow=True,
             )
-        self.assertContains(response, "Cancelled 1 reservation(s).")
+        self.assertContains(response, "Отказани резервации: 1.")
         self.reservation.refresh_from_db()
         self.assertEqual(self.reservation.status, Reservation.Status.CANCELLED)
         self.assertEqual(self.reservation.cancelled_by, self.admin)
@@ -84,7 +84,7 @@ class ReservationAdminTests(TestCase):
                 },
                 follow=True,
             )
-        self.assertContains(response, "already cancelled")
+        self.assertContains(response, "вече е отказана")
 
     def test_timing_filter_separates_upcoming_from_past(self):
         past = Reservation.objects.create(
@@ -114,11 +114,11 @@ class MachineSetAdminTests(TestCase):
 
     def test_lists_three_machine_sets(self):
         response = self.client.get(reverse("admin:laundry_machineset_changelist"))
-        for name in ["Set 1", "Set 2", "Set 3"]:
+        for name in ["Комплект 1", "Комплект 2", "Комплект 3"]:
             self.assertContains(response, name)
 
     def test_delete_is_disabled(self):
-        machine_set = MachineSet.objects.get(name="Set 1")
+        machine_set = MachineSet.objects.get(name="Комплект 1")
         response = self.client.post(
             reverse("admin:laundry_machineset_delete", args=[machine_set.pk]),
             {"post": "yes"},

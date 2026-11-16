@@ -88,7 +88,7 @@ class PasswordResetConfirmTests(TestCase):
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         url = reverse("password_reset_confirm", args=[uid, "bad-token"])
         response = self.client.get(url)
-        self.assertContains(response, "invalid or has expired")
+        self.assertContains(response, "невалиден или е изтекъл")
 
     def test_used_token_cannot_be_reused(self):
         user = make_active_user()
@@ -96,7 +96,7 @@ class PasswordResetConfirmTests(TestCase):
         self._complete_reset(url)
         # The token hash changed with the password; the old link is dead.
         response = self.client.get(url, follow=True)
-        self.assertContains(response, "invalid or has expired")
+        self.assertContains(response, "невалиден или е изтекъл")
 
     def test_reset_does_not_reactivate_deactivated_user(self):
         user = make_active_user()

@@ -59,7 +59,7 @@ class SlotTimeTests(TestCase):
 
     def test_slot_labels(self):
         self.assertEqual(services.slot_label(1), "06:00–10:00")
-        self.assertEqual(services.slot_label(5), "22:00–02:00 (+1 day)")
+        self.assertEqual(services.slot_label(5), "22:00–02:00")
 
 
 class WeekCalculationTests(TestCase):
